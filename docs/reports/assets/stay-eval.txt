@@ -1,0 +1,14 @@
+    Clean synthetic week (filter -> detect)
+truth stays 23 · detected 23 · TP 23 · FP 0 · FN 0
+precision 100.0% · recall 100.0% · F1 100.0%
+mean centroid error 2.0 m · start error 0.4 min · end error 1.9 min
+points in 2177 · kept 2177 · dropped {"invalid":0,"inaccurate":0,"duplicate":0,"spike":0}
+    Noisy synthetic week (5% low-accuracy, 2% spikes)
+truth stays 23 · detected 23 · TP 23 · FP 0 · FN 0
+precision 100.0% · recall 100.0% · F1 100.0%
+mean centroid error 2.0 m · start error 0.4 min · end error 1.9 min
+injected inaccurate 113 · injected spikes 40 · dropped {"invalid":0,"inaccurate":113,"duplicate":0,"spike":40}
+    Noisy synthetic week WITHOUT filter (ablation)
+truth stays 23 · detected 29 · TP 23 · FP 6 · FN 0
+precision 79.3% · recall 100.0% · F1 88.5%
+mean centroid error 2.7 m · start error 55.2 min · end error 55.9 min

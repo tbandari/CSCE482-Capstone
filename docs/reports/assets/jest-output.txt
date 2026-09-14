@@ -1,0 +1,120 @@
+PASS src/lib/demo/__tests__/sample-week-test.ts
+  generateSampleWeek
+    ✓ is deterministic for a given seed (37 ms)
+    ✓ produces a chronological, valid, week-long trace (43 ms)
+  lastCompleteWeekStart
+    ✓ returns a Monday at least seven days ago
+  console.log
+    Clean synthetic week (filter -> detect)
+      truth stays 23 · detected 23 · TP 23 · FP 0 · FN 0
+      precision 100.0% · recall 100.0% · F1 100.0%
+      mean centroid error 2.0 m · start error 0.4 min · end error 1.9 min
+      points in 2177 · kept 2177 · dropped {"invalid":0,"inaccurate":0,"duplicate":0,"spike":0}
+  console.log
+    Noisy synthetic week (5% low-accuracy, 2% spikes)
+      truth stays 23 · detected 23 · TP 23 · FP 0 · FN 0
+      precision 100.0% · recall 100.0% · F1 100.0%
+      mean centroid error 2.0 m · start error 0.4 min · end error 1.9 min
+      injected inaccurate 113 · injected spikes 40 · dropped {"invalid":0,"inaccurate":113,"duplicate":0,"spike":40}
+  console.log
+    Noisy synthetic week WITHOUT filter (ablation)
+      truth stays 23 · detected 29 · TP 23 · FP 6 · FN 0
+      precision 79.3% · recall 100.0% · F1 88.5%
+      mean centroid error 2.7 m · start error 55.2 min · end error 55.9 min
+PASS src/lib/stays/__tests__/evaluate-test.ts
+  stay detection on the synthetic week
+    ✓ clean trace: precision and recall are both at least 90% (19 ms)
+    ✓ noisy trace: the filter removes injected junk and quality holds (10 ms)
+    ✓ ablation: the filter never makes detection worse (14 ms)
+PASS src/lib/stays/__tests__/filter-points-test.ts
+  filterPoints
+    ✓ sorts by time and keeps clean points
+    ✓ drops points with poor reported accuracy (1 ms)
+    ✓ drops invalid coordinates and null-island fixes
+    ✓ drops exact timestamp duplicates
+    ✓ drops an out-and-back GPS spike
+    ✓ keeps a fast but real relocation
+PASS src/lib/stays/__tests__/detect-stays-test.ts
+  detectStays
+    ✓ returns nothing for an empty trace
+    ✓ finds three stays in a home -> coffee -> work morning (1 ms)
+    ✓ ignores a stop shorter than the minimum duration
+    ✓ handles sparse data: two fixes eight hours apart at one place is a stay (1 ms)
+    ✓ merges a stay that a single GPS jump split in two
+    ✓ emits a stay that is still in progress at the end of the trace
+    ✓ does not depend on input order
+PASS src/lib/geo/__tests__/distance-test.ts
+  haversineMeters
+    ✓ one degree of longitude at the equator is about 111.19 km (1 ms)
+    ✓ identical points are zero meters apart
+    ✓ is symmetric
+  offsetMeters
+    ✓ moving 100 m north lands 100 m away
+    ✓ moving east accounts for latitude
+  centroid and boundingBox
+    ✓ centroid of two points is their midpoint
+    ✓ centroid of nothing throws (2 ms)
+    ✓ boundingBox wraps all points (1 ms)
+  isValidCoordinate
+    ✓ (30.6, -96.3) -> true
+    ✓ (-90, 180) -> true
+    ✓ (0, 0) -> false
+    ✓ (91, 0) -> false
+    ✓ (0, -181) -> false
+    ✓ (NaN, 0) -> false
+PASS src/lib/__tests__/format-test.ts
+  formatDuration
+    ✓ 0 ms -> <1m
+    ✓ 30000 ms -> <1m
+    ✓ 300000 ms -> 5m
+    ✓ 8100000 ms -> 2h 15m
+    ✓ 97620000 ms -> 1d 3h
+    ✓ -5 ms -> —
+  formatCount
+    ✓ 0 -> 0
+    ✓ 999 -> 999
+    ✓ 1400 -> 1.4k
+    ✓ 25000 -> 25k
+    ✓ 1500000 -> 1.5M
+  formatDistance
+    ✓ switches to kilometers at 1000 m
+  formatDayHeading
+    ✓ uses Today and Yesterday relative to now (31 ms)
+PASS src/lib/import/__tests__/google-timeline-test.ts
+  parseLatLng
+    ✓ parses "30.6187°, -96.3365°"
+    ✓ parses "geo:30.6187,-96.3365"
+    ✓ parses "30.6187,-96.3365"
+    ✓ parses {"latLng":"30.6187°, -96.3365°"} (1 ms)
+    ✓ parses {"placeLocation":{"latLng":"1°, 2°"}}
+    ✓ parses {"latitudeE7":306187000,"longitudeE7":-963365000}
+    ✓ parses {"lat":30.6,"lng":-96.3}
+    ✓ parses {"latitude":"30.6","longitude":"-96.3"}
+    ✓ rejects "garbage"
+    ✓ rejects "0°, 0°"
+    ✓ rejects "95°, 10°"
+    ✓ rejects null
+    ✓ rejects 42
+    ✓ rejects {}
+    ✓ rejects {"latLng":"x,y"}
+  parseTimestamp
+    ✓ accepts ISO strings with offsets, epoch numbers and numeric strings
+  detectTimelineFormat
+    ✓ recognises all three shapes and rejects the rest (1 ms)
+  parseGoogleTimeline: Android on-device export
+    ✓ reports the format and per-segment statistics
+    ✓ expands the visit into samples every 10 minutes and de-duplicates joins
+    ✓ is sorted, tagged with the import id and carries raw-signal metadata
+  parseGoogleTimeline: iOS on-device export
+    ✓ resolves minute offsets against the segment start
+    ✓ handles geo: URIs, string numbers and a one-hour visit (1 ms)
+  parseGoogleTimeline: legacy Records.json
+    ✓ reads E7 coordinates and both timestamp spellings
+  parseGoogleTimelineText
+    ✓ gives friendly errors for invalid JSON and unknown files (3 ms)
+    ✓ round-trips a fixture through text
+Test Suites: 7 passed, 7 total
+Tests:       71 passed, 71 total
+Snapshots:   0 total
+Time:        0.626 s, estimated 1 s
+Ran all test suites.
