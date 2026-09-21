@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 const TABS = [
   { name: 'map', href: '/map', label: 'Map', sf: 'map', md: 'map' },
   { name: 'timeline', href: '/timeline', label: 'Timeline', sf: 'clock', md: 'schedule' },
+  { name: 'profile', href: '/profile', label: 'Profile', sf: 'person.crop.circle', md: 'person' },
   { name: 'import', href: '/import', label: 'Import', sf: 'square.and.arrow.down', md: 'download' },
   { name: 'settings', href: '/settings', label: 'Settings', sf: 'gearshape', md: 'settings' },
 ] as const;

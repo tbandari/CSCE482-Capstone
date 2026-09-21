@@ -14,6 +14,10 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf={{ default: 'clock', selected: 'clock.fill' }} md="schedule" />
         <NativeTabs.Trigger.Label>Timeline</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} md="person" />
+        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="import">
         <NativeTabs.Trigger.Icon sf="square.and.arrow.down" md="download" />
         <NativeTabs.Trigger.Label>Import</NativeTabs.Trigger.Label>
