@@ -54,6 +54,16 @@ export const MapColors = {
   focus: '#F59E0B',
 } as const;
 
+/**
+ * Heatmap ramp: one hue (blue), least to most fixes. On light tiles the ramp
+ * darkens; on the dark map it brightens, so quiet cells recede into the surface
+ * in both modes. Steps from the reference sequential blue ramp.
+ */
+export const HeatColors = {
+  light: ['#b7d3f6', '#86b6ef', '#3987e5', '#1c5cab', '#0d366b'],
+  dark: ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#b7d3f6'],
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     sans: 'system-ui',
