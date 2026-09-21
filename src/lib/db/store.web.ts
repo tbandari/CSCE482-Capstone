@@ -7,6 +7,7 @@
 
 import { notifyDataChanged } from '@/lib/db/events';
 import type { RangeQuery, Store } from '@/lib/db/store-types';
+import { resetSyncState } from '@/lib/settings';
 import type { DataStats, ImportRecord, LocationPoint, Visit } from '@/lib/types';
 
 const STORAGE_KEY = 'orbit.store.v1';
@@ -93,6 +94,17 @@ export const store: Store = {
     return load().points.length;
   },
 
+  async getPointsAfterId(afterId, limit) {
+    return load()
+      .points.filter((point) => (point.id ?? 0) > afterId)
+      .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+      .slice(0, Math.max(0, Math.floor(limit)));
+  },
+
+  async getMaxPointId() {
+    return load().points.reduce((max, point) => Math.max(max, point.id ?? 0), 0);
+  },
+
   async replaceVisits(visits) {
     const data = load();
     data.visits = visits.map((v) => ({ ...v, id: data.nextVisitId++ }));
@@ -152,6 +164,7 @@ export const store: Store = {
     snapshot = { points: [], visits: [], imports: [], nextPointId: 1, nextVisitId: 1 };
     pointKeys.clear();
     persist();
+    resetSyncState();
     notifyDataChanged();
   },
 };

@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { Colors } from '@/constants/theme';
 import { useIsDark } from '@/hooks/use-theme';
 import { resumeTrackingIfEnabled } from '@/lib/location/tracking';
+import { startSyncService } from '@/lib/sync/sync-service';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -30,6 +31,7 @@ export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
     resumeTrackingIfEnabled().catch((error) => console.warn('could not resume tracking', error));
+    return startSyncService();
   }, []);
 
   return (

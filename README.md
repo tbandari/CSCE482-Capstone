@@ -53,6 +53,19 @@ Scan the QR code with Expo Go, or press `i` (iOS simulator), `a` (Android), `w` 
 On the Import tab, **Load sample week** fills the app with a synthetic week around
 College Station so every screen has data.
 
+### Backend URL
+
+The app reads `EXPO_PUBLIC_API_URL` and defaults to `http://127.0.0.1:8000` for
+web and the iOS simulator. An Android emulator reaches the host machine at
+`http://10.0.2.2:8000`; a physical phone needs the computer's LAN IP and both
+devices on the same network:
+
+```bash
+EXPO_PUBLIC_API_URL=http://10.0.2.2:8000 npx expo start
+# Physical phone example:
+EXPO_PUBLIC_API_URL=http://192.168.1.50:8000 npx expo start
+```
+
 ### Expo Go vs. development build
 
 Expo Go can run everything except background location: TaskManager is unavailable in

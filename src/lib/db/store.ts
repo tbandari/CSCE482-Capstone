@@ -10,6 +10,7 @@ import * as SQLite from 'expo-sqlite';
 
 import { notifyDataChanged } from '@/lib/db/events';
 import type { RangeQuery, Store } from '@/lib/db/store-types';
+import { resetSyncState } from '@/lib/settings';
 import type { DataStats, ImportRecord, LocationPoint, Visit } from '@/lib/types';
 
 const DATABASE_NAME = 'orbit.db';
@@ -203,6 +204,21 @@ export const store: Store = {
     return row?.n ?? 0;
   },
 
+  async getPointsAfterId(afterId, limit) {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<PointRow>(
+      'SELECT * FROM points WHERE id > ? ORDER BY id ASC LIMIT ?',
+      [afterId, Math.max(0, Math.floor(limit))],
+    );
+    return rows.map(toPoint);
+  },
+
+  async getMaxPointId() {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<{ id: number | null }>('SELECT MAX(id) AS id FROM points');
+    return row?.id ?? 0;
+  },
+
   async replaceVisits(visits) {
     const db = await getDatabase();
     await db.withExclusiveTransactionAsync(async (tx) => {
@@ -299,6 +315,7 @@ export const store: Store = {
   async clearAll() {
     const db = await getDatabase();
     await db.execAsync('DELETE FROM points; DELETE FROM visits; DELETE FROM imports;');
+    resetSyncState();
     notifyDataChanged();
   },
 };
