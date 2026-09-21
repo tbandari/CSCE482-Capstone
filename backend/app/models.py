@@ -1,13 +1,16 @@
 """
-Week-1 schema. Coordinates are plain columns; the PostGIS geography column and
-GiST index arrive with the OpenStreetMap place index (Alembic migration, sprint 2).
-Everything hangs off `users` with ON DELETE CASCADE so account deletion is one statement.
+Schema. Coordinates are plain columns; the PostGIS geography column and GiST
+index arrive with the Alembic migration (month 2, part 2). Everything a user owns
+hangs off `users` with ON DELETE CASCADE so account deletion is one statement.
+`places` is the shared OpenStreetMap index and belongs to nobody.
 """
 
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -40,6 +43,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
     visits: Mapped[list["Visit"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+    interest_overrides: Mapped[list["InterestOverride"]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -78,5 +84,40 @@ class Visit(Base):
     radius: Mapped[float] = mapped_column(Float)
     point_count: Mapped[int] = mapped_column(Integer)
     label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    place_id: Mapped[int | None] = mapped_column(
+        ForeignKey("places.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    place_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     user: Mapped[User] = relationship(back_populates="visits")
+    place: Mapped["Place | None"] = relationship()
+
+
+class Place(Base):
+    """One named OpenStreetMap feature. Loaded by scripts/load_osm.py, never from user data."""
+
+    __tablename__ = "places"
+    __table_args__ = (Index("ix_places_lat_lon", "lat", "lon"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True)
+    osm_id: Mapped[str] = mapped_column(String(32), unique=True)  # "node/123", "way/456"
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    category: Mapped[str] = mapped_column(String(32), index=True)  # one of app.ml.types.CATEGORIES
+    lat: Mapped[float] = mapped_column(Float)
+    lon: Mapped[float] = mapped_column(Float)
+    opening_hours: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tags: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+
+
+class InterestOverride(Base):
+    """A user's edit to their interest profile. Only `hidden` for now."""
+
+    __tablename__ = "interest_overrides"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_interest_override"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category: Mapped[str] = mapped_column(String(32))
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    user: Mapped[User] = relationship(back_populates="interest_overrides")

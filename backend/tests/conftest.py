@@ -1,18 +1,37 @@
+import json
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.db import Base, get_db, make_engine
 from app.main import create_app
+from app.places.loader import upsert_places
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
-    """A fresh in-memory database and app per test."""
+def engine() -> Iterator[Engine]:
+    """A fresh in-memory database per test."""
     engine = make_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def db(engine: Engine) -> Iterator[Session]:
+    """Direct access to the test database, for loading places and checking rows."""
+    with Session(engine, expire_on_commit=False) as session:
+        yield session
+
+
+@pytest.fixture
+def client(engine: Engine) -> Iterator[TestClient]:
     testing_session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
     def override_get_db() -> Iterator:
@@ -26,7 +45,21 @@ def client() -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
-    engine.dispose()
+
+
+@pytest.fixture
+def overpass_sample() -> dict:
+    return json.loads((FIXTURES / "overpass-sample.json").read_text())
+
+
+@pytest.fixture
+def places(db: Session, overpass_sample: dict) -> dict[str, int]:
+    """Loads the sample OSM extract; returns place ids by name (unnamed places by osm_id)."""
+    from app.models import Place
+
+    upsert_places(db, overpass_sample)
+    db.commit()
+    return {place.name or place.osm_id: place.id for place in db.query(Place).all()}
 
 
 def register(client: TestClient, email: str = "zayd@tamu.edu", password: str = "correct horse battery") -> dict[str, str]:
