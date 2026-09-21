@@ -71,3 +71,11 @@ def register(client: TestClient, email: str = "zayd@tamu.edu", password: str = "
 @pytest.fixture
 def auth(client: TestClient) -> dict[str, str]:
     return register(client)
+
+
+@pytest.fixture(autouse=True)
+def _ml_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """TEMPORARY: uses tests/fake_ml.py while app.ml.places / app.ml.interests are not merged yet."""
+    from tests.fake_ml import install_if_missing
+
+    install_if_missing(monkeypatch)

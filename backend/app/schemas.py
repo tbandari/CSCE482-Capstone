@@ -58,6 +58,16 @@ class PointOut(PointIn):
     id: int
 
 
+class PlaceSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str | None
+    category: str
+    lat: float
+    lon: float
+
+
 class VisitOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +79,8 @@ class VisitOut(BaseModel):
     radius: float
     point_count: int
     label: str | None
+    place: PlaceSummary | None = None
+    place_confidence: float | None = None
 
 
 class NearbyPlaceOut(BaseModel):
@@ -85,6 +97,7 @@ class RecomputeResponse(BaseModel):
     points: int
     kept: int
     visits: int
+    resolved: int
     dropped: dict[str, int]
 
 
