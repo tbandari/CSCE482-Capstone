@@ -109,8 +109,44 @@ class StatsResponse(BaseModel):
     last_ts: int | None
 
 
+class InterestOut(BaseModel):
+    category: str
+    weight: float
+    visits: int
+    dwell_minutes: float
+    hidden: bool
+
+
+class TopPlaceOut(BaseModel):
+    place_id: int
+    name: str | None
+    category: str
+    visits: int
+    last_visit_ts: int
+
+
+class ProfileOut(BaseModel):
+    generated_at: int
+    total_visits: int
+    resolved_visits: int
+    interests: list[InterestOut]
+    top_places: list[TopPlaceOut]
+
+
+class InterestPatch(BaseModel):
+    hidden: bool
+
+
+class InterestOverrideOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category: str
+    hidden: bool
+
+
 class ExportResponse(BaseModel):
     user: UserOut
     exported_at: int
     points: list[PointOut]
     visits: list[VisitOut]
+    interest_overrides: list[InterestOverrideOut]
