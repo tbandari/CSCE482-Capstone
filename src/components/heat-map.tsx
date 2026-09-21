@@ -82,7 +82,7 @@ export default function HeatMap({ cells, palette, legend, dark, fitKey }: Props)
       L.rectangle(cell.bounds, {
         stroke: false,
         fillColor: color,
-        fillOpacity: 0.35 + 0.5 * cell.intensity,
+        fillOpacity: 0.5 + 0.4 * cell.intensity,
       })
         .bindTooltip(`${cell.count.toLocaleString()} ${cell.count === 1 ? 'fix' : 'fixes'}`, { direction: 'top' })
         .addTo(layer);
