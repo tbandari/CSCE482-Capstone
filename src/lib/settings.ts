@@ -10,11 +10,16 @@ import { useSyncExternalStore } from 'react';
 export interface Settings {
   onboardingComplete: boolean;
   trackingEnabled: boolean;
+  /** Highest local point id acknowledged by the current cloud account. */
+  lastSyncedPointId: number;
+  lastSyncAt: number | null;
 }
 
 const DEFAULTS: Settings = {
   onboardingComplete: false,
   trackingEnabled: false,
+  lastSyncedPointId: 0,
+  lastSyncAt: null,
 };
 
 const PREFIX = 'orbit.settings.';
@@ -54,6 +59,12 @@ function subscribe<K extends keyof Settings>(key: K, listener: Listener): () => 
 }
 
 export const settings = { get: read, set: write, subscribe };
+
+/** A different account must replay the full outbox; server-side dedupe makes that safe. */
+export function resetSyncState(): void {
+  write('lastSyncedPointId', 0);
+  write('lastSyncAt', null);
+}
 
 export function useSetting<K extends keyof Settings>(key: K): Settings[K] {
   return useSyncExternalStore(

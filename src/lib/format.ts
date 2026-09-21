@@ -63,3 +63,16 @@ export function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
 }
+
+export function formatRelativeTime(ts: number | null, now = Date.now()): string {
+  if (ts == null) return 'Never';
+  const elapsed = Math.max(0, now - ts);
+  if (elapsed < MINUTE) return 'Just now';
+  const minutes = Math.floor(elapsed / MINUTE);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(elapsed / HOUR);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(elapsed / DAY);
+  if (days < 7) return `${days}d ago`;
+  return formatDate(ts);
+}

@@ -18,6 +18,9 @@ export interface Store {
   insertPoints(points: readonly LocationPoint[]): Promise<number>;
   /** Points in ascending time order. With `limit`, the most recent ones. */
   getPoints(query?: RangeQuery): Promise<LocationPoint[]>;
+  /** Unsynced outbox page, ordered by the stable local id rather than timestamp. */
+  getPointsAfterId(afterId: number, limit: number): Promise<LocationPoint[]>;
+  getMaxPointId(): Promise<number>;
   getPointCount(): Promise<number>;
 
   /** Replaces every stored visit. Visits are derived data, so this is always safe. */

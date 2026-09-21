@@ -29,6 +29,7 @@ if (!TaskManager.isTaskDefined(LOCATION_TASK_NAME)) {
     if (!data?.locations?.length) return;
     try {
       await store.insertPoints(data.locations.map(toPoint));
+      // TODO(part-2): consider direct background sync after battery profiling.
     } catch (storeError) {
       console.warn('background location task could not store points', storeError);
     }
