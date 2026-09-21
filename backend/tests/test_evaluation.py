@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 import types
 
 import pytest
@@ -412,15 +413,21 @@ def test_synthetic_places_are_the_demo_places():
 # --------------------------------------------------------------------------- CLI
 
 
-def test_cli_runs_on_the_default_set(capsys):
+@pytest.fixture
+def ranker_absent(monkeypatch):
+    """Simulate a checkout without app/ml/places.py: a None entry makes the import raise ImportError."""
+    monkeypatch.setitem(sys.modules, "app.ml.places", None)
+
+
+def test_cli_runs_on_the_default_set(capsys, ranker_absent):
     assert places_cli.main([]) == 0
     out = capsys.readouterr().out
     assert "Place resolution" in out
     assert "nearest" in out
-    assert places_cli.RANKER_UNAVAILABLE in out, "app.ml.places does not exist on this branch yet"
+    assert places_cli.RANKER_UNAVAILABLE in out
 
 
-def test_cli_writes_json(tmp_path, capsys):
+def test_cli_writes_json(tmp_path, capsys, ranker_absent):
     out_path = tmp_path / "nested" / "out.json"
     assert places_cli.main(["--json", str(out_path), "--sweep"]) == 0
     capsys.readouterr()
@@ -438,7 +445,7 @@ def test_cli_reports_a_bad_label_file_without_a_traceback(tmp_path, capsys):
 
 
 def test_cli_picks_up_rank_candidates_when_it_lands(monkeypatch, capsys):
-    """Roger's branch has not merged; fake the module to prove the wiring works."""
+    """Swap in a known ranker to prove the CLI picks up app.ml.places when it is installed."""
     module = types.ModuleType("app.ml.places")
     module.rank_candidates = perfect
     monkeypatch.setitem(__import__("sys").modules, "app.ml.places", module)
@@ -449,5 +456,5 @@ def test_cli_picks_up_rank_candidates_when_it_lands(monkeypatch, capsys):
     assert places_cli.RANKER_UNAVAILABLE not in out
 
 
-def test_load_rank_candidates_returns_none_when_absent():
+def test_load_rank_candidates_returns_none_when_absent(ranker_absent):
     assert places_cli.load_rank_candidates() is None
