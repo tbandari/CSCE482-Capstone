@@ -49,3 +49,6 @@ __pycache__/
 .pytest_cache/
 backend/*.db
 backend/.env
+
+# Hand labels: real location history, never committed (see docs/eval/labeling-protocol.md)
+backend/evaluation/data/real/
