@@ -79,6 +79,46 @@ app/
 tests/
 ```
 
+## Place resolution & interests
+
+`app/ml/` is a small, dependency-free package (standard library only) shared by
+the API, the evaluation harness and the app. Nothing in it touches the database
+or the network, so it can be tested and tuned in isolation.
+
+- `types.py` — the shared dataclasses (`VisitFeatures`, `PlaceCandidate`,
+  `ScoredCandidate`, `InterestWeight`) and the `CATEGORIES` tuple. Identical
+  copy in three places by convention (see `README.md`); don't edit without
+  telling the team.
+- `opening_hours.py` — a small parser for the common OSM `opening_hours` subset
+  (`24/7`, `off`, `Mo-Fr 07:00-22:00; Sa,Su 09:00-20:00`, comma day/time lists).
+  Anything outside that subset resolves to `"unknown"` rather than raising.
+- `places.py` — `rank_candidates(visit, candidates, revisit_counts, tz)` scores
+  each candidate as a weighted sum of features and returns them best-first:
+  - **Distance**: Gaussian log-likelihood decay (`DISTANCE_SIGMA_M`) around the
+    visit centroid, with an extra flat `DISTANCE_PENALTY` past
+    `DISTANCE_PENALTY_RADIUS_M` (30 m, per the proposal).
+  - **Dwell fit**: how well the visit's duration matches a per-category typical
+    range in `DWELL_MINUTES_BY_CATEGORY`; unlisted categories score neutral.
+  - **Opening hours**: the visit midpoint is converted to local time
+    (`zoneinfo.ZoneInfo(tz)`) and checked against `opening_hours.status_at`;
+    open/closed give `HOURS_OPEN_BONUS`/`-HOURS_CLOSED_PENALTY`, unknown is
+    neutral.
+  - **Revisits**: `log1p(revisit_counts[place_id])`, weighted by `W_REVISIT`.
+  - **Category prior**: a small penalty (`CATEGORY_PRIOR_PENALTY`) for
+    `parking`, `fuel` and `other`, which are rarely the real destination.
+
+  Confidence is a softmax over the candidates' scores plus a fixed
+  `NONE_OF_THESE_SCORE` option, so a single low-scoring candidate still reads as
+  low-confidence instead of winning by default. All the `W_*`, `*_SIGMA_M`,
+  `*_PENALTY*` and `*_BONUS` names are module-level constants at the top of
+  `places.py` — tune them there.
+- `interests.py` — `build_interest_profile(visits, hidden, now_ts,
+  half_life_days)` sums `sqrt(dwell_minutes) * 0.5 ** (age_days /
+  half_life_days)` per category, drops `EXCLUDED_CATEGORIES` (parking, fuel,
+  bank, office, lodging, other) entirely, and normalizes the non-hidden weights
+  to sum to 1. Hidden categories stay in the output with `weight=0.0` so the UI
+  can still list and un-hide them.
+
 ## What's next
 
 - Alembic migrations, then a PostGIS `geography` column + GiST index on points.
