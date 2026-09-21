@@ -71,6 +71,16 @@ class VisitOut(BaseModel):
     label: str | None
 
 
+class NearbyPlaceOut(BaseModel):
+    id: int
+    osm_id: str
+    name: str | None
+    category: str
+    lat: float
+    lon: float
+    distance_m: float
+
+
 class RecomputeResponse(BaseModel):
     points: int
     kept: int

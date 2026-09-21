@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import Base, engine
-from app.routers import auth, export, locations, visits
+from app.routers import auth, export, locations, places, visits
 
 
 def create_app(*, create_tables: bool = True) -> FastAPI:
@@ -36,6 +36,7 @@ def create_app(*, create_tables: bool = True) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(locations.router)
     app.include_router(visits.router)
+    app.include_router(places.router)
     app.include_router(export.router)
     return app
 
