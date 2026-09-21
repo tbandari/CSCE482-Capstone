@@ -103,9 +103,9 @@ python -m pytest -q
 
 Tests run against an in-memory SQLite database, so they need no services.
 `tests/fixtures/overpass-sample.json` is a small handmade extract around Texas A&M.
-While `app/ml/places.py` / `interests.py` are not merged, `tests/fake_ml.py` stands
-in for them. After they merge the suite runs against the real models, and that file
-and the `_ml_fallback` fixture in `conftest.py` can be deleted.
+Most tests run against the real models in `app/ml/`. The profile tests pin the
+simple nearest-place ranker in `tests/rankers.py`, because they check the API, not
+ranking quality.
 
 ## Layout
 

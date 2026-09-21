@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import InterestOverride, Place, Visit
 from app.places import ml
 from tests.conftest import register
+from tests.rankers import nearest_rank_candidates
 from tests.test_places_resolve import EMPTY_FIELD, EVANS, NORTHGATE_COFFEE, upload
 from tests.test_visits import HOUR, MINUTE, T0, stationary, travel
 
@@ -22,7 +23,7 @@ def campus_day() -> list[dict]:
         (EMPTY_FIELD, HOUR),
     ]
     trace: list[dict] = []
-    t = T0
+    t = T0 - 8 * HOUR  # 08:33 in College Station, so every place in the day is open
     for i, (place, duration) in enumerate(legs):
         trace += stationary(place, t, t + duration)
         t += duration
@@ -30,6 +31,13 @@ def campus_day() -> list[dict]:
             trace += travel(place, legs[i + 1][0], t, t + 20 * MINUTE)
             t += 20 * MINUTE
     return trace
+
+
+@pytest.fixture(autouse=True)
+def nearest_ranker(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests cover the profile API, not ranking quality, so resolution must not hinge on
+    how the real ranker scores a synthetic trace. Profiles still come from the real interest model."""
+    monkeypatch.setattr(ml, "get_ranker", lambda: nearest_rank_candidates)
 
 
 @pytest.fixture
