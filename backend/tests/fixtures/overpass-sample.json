@@ -1,0 +1,30 @@
+{
+  "version": 0.6,
+  "generator": "Handmade test fixture. Positions approximate real Texas A&M places; ids are fake.",
+  "elements": [
+    { "type": "node", "id": 1001, "lat": 30.6160, "lon": -96.3393,
+      "tags": { "amenity": "library", "name": "Evans Library", "opening_hours": "Mo-Su 00:00-24:00" } },
+    { "type": "node", "id": 1002, "lat": 30.616225, "lon": -96.3393,
+      "tags": { "amenity": "cafe", "name": "Library Cafe", "opening_hours": "Mo-Fr 07:30-17:00" } },
+    { "type": "way", "id": 2001, "center": { "lat": 30.6212, "lon": -96.3403 },
+      "tags": { "building": "university", "name": "Zachry Engineering Education Complex" } },
+    { "type": "way", "id": 2002, "center": { "lat": 30.6073, "lon": -96.3436 },
+      "tags": { "leisure": "sports_centre", "name": "Student Recreation Center" } },
+    { "type": "way", "id": 2003, "center": { "lat": 30.6101, "lon": -96.3402 },
+      "tags": { "leisure": "stadium", "name": "Kyle Field" } },
+    { "type": "node", "id": 1003, "lat": 30.6104, "lon": -96.3400,
+      "tags": { "amenity": "parking" } },
+    { "type": "node", "id": 1004, "lat": 30.6222, "lon": -96.3465,
+      "tags": { "amenity": "cafe", "name": "Northgate Coffee", "opening_hours": "Mo-Fr 07:00-22:00; Sa,Su 08:00-20:00" } },
+    { "type": "node", "id": 1005, "lat": 30.6275, "lon": -96.3175,
+      "tags": { "shop": "supermarket", "name": "Northside Grocery" } },
+    { "type": "node", "id": 1006, "lat": 30.6180, "lon": -96.3380,
+      "tags": { "amenity": "fast_food" } },
+    { "type": "relation", "id": 3001, "center": { "lat": 30.6150, "lon": -96.3300 },
+      "tags": { "amenity": "place_of_worship", "name": "University Chapel" } },
+    { "type": "node", "id": 1007, "lat": 30.6190, "lon": -96.3390 },
+    { "type": "way", "id": 2004, "center": { "lat": 30.6170, "lon": -96.3350 },
+      "tags": { "highway": "residential", "name": "Some Street" } },
+    { "type": "way", "id": 2005, "tags": { "amenity": "cafe", "name": "Cafe Without Center" } }
+  ]
+}

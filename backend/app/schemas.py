@@ -58,6 +58,16 @@ class PointOut(PointIn):
     id: int
 
 
+class PlaceSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str | None
+    category: str
+    lat: float
+    lon: float
+
+
 class VisitOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,12 +79,25 @@ class VisitOut(BaseModel):
     radius: float
     point_count: int
     label: str | None
+    place: PlaceSummary | None = None
+    place_confidence: float | None = None
+
+
+class NearbyPlaceOut(BaseModel):
+    id: int
+    osm_id: str
+    name: str | None
+    category: str
+    lat: float
+    lon: float
+    distance_m: float
 
 
 class RecomputeResponse(BaseModel):
     points: int
     kept: int
     visits: int
+    resolved: int
     dropped: dict[str, int]
 
 
@@ -86,8 +109,44 @@ class StatsResponse(BaseModel):
     last_ts: int | None
 
 
+class InterestOut(BaseModel):
+    category: str
+    weight: float
+    visits: int
+    dwell_minutes: float
+    hidden: bool
+
+
+class TopPlaceOut(BaseModel):
+    place_id: int
+    name: str | None
+    category: str
+    visits: int
+    last_visit_ts: int
+
+
+class ProfileOut(BaseModel):
+    generated_at: int
+    total_visits: int
+    resolved_visits: int
+    interests: list[InterestOut]
+    top_places: list[TopPlaceOut]
+
+
+class InterestPatch(BaseModel):
+    hidden: bool
+
+
+class InterestOverrideOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category: str
+    hidden: bool
+
+
 class ExportResponse(BaseModel):
     user: UserOut
     exported_at: int
     points: list[PointOut]
     visits: list[VisitOut]
+    interest_overrides: list[InterestOverrideOut]

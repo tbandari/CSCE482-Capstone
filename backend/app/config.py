@@ -14,5 +14,12 @@ class Settings(BaseSettings):
     max_batch_size: int = 5000
     cors_origins: list[str] = ["*"]
 
+    # Place resolution: candidates within this radius of a visit's centroid are ranked,
+    # and the best one is assigned only if its confidence clears the threshold.
+    place_search_radius_m: float = 50
+    place_min_confidence: float = 0.35
+    # Opening hours are local time; one zone is enough until users travel (Part 2: per-visit zone).
+    place_timezone: str = "America/Chicago"
+
 
 settings = Settings()
