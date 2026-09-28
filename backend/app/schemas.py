@@ -148,12 +148,20 @@ class RecommendationOut(BaseModel):
     place: PlaceSummary
     score: float
     reason: str
-    distance_m: float | None = None
+
+
+class NearbyRecommendationOut(RecommendationOut):
+    distance_m: float
 
 
 class RecommendationsResponse(BaseModel):
     generated_at: int
     items: list[RecommendationOut]
+
+
+class NearbyRecommendationsResponse(BaseModel):
+    generated_at: int
+    items: list[NearbyRecommendationOut]
 
 
 class FeedbackRequest(BaseModel):

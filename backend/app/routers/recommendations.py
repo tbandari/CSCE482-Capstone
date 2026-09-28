@@ -9,7 +9,14 @@ from app.models import Place, RecommendationFeedback, User
 from app.places import ml
 from app.places.profile import interest_weights, resolved_visits, visit_history
 from app.places.recommend import recommendation_candidates
-from app.schemas import FeedbackRequest, PlaceSummary, RecommendationOut, RecommendationsResponse
+from app.schemas import (
+    FeedbackRequest,
+    NearbyRecommendationOut,
+    NearbyRecommendationsResponse,
+    PlaceSummary,
+    RecommendationOut,
+    RecommendationsResponse,
+)
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
@@ -21,7 +28,7 @@ def _recommend(
     center: tuple[float, float] | None = None,
     radius_m: float | None = None,
     with_distance: bool = False,
-) -> RecommendationsResponse:
+) -> RecommendationsResponse | NearbyRecommendationsResponse:
     try:
         recommend_places = ml.get_recommender()
         resolved = resolved_visits(db, user.id)
@@ -31,8 +38,9 @@ def _recommend(
 
     candidates = recommendation_candidates(db, user.id, center=center, radius_m=radius_m)
     now_ts = int(time.time() * 1000)
+    response_type = NearbyRecommendationsResponse if with_distance else RecommendationsResponse
     if not candidates:
-        return RecommendationsResponse(generated_at=now_ts, items=[])
+        return response_type(generated_at=now_ts, items=[])
 
     by_id = {place.id: (place, distance) for place, distance in candidates}
     scored = recommend_places(
@@ -43,30 +51,31 @@ def _recommend(
         limit=limit,
     )
 
-    items: list[RecommendationOut] = []
+    items = []
     for suggestion in scored[:limit]:
         found = by_id.get(suggestion.place_id)
         if found is None:
             continue  # a model that invents an id is a bug, but it must not 500 the endpoint
         place, distance = found
-        items.append(
-            RecommendationOut(
-                place=PlaceSummary.model_validate(place),
-                score=suggestion.score,
-                reason=suggestion.reason,
-                distance_m=round(distance, 1) if with_distance else None,
+        summary = PlaceSummary.model_validate(place)
+        if with_distance:
+            items.append(
+                NearbyRecommendationOut(
+                    place=summary, score=suggestion.score, reason=suggestion.reason, distance_m=round(distance, 1)
+                )
             )
-        )
-    return RecommendationsResponse(generated_at=now_ts, items=items)
+        else:
+            items.append(RecommendationOut(place=summary, score=suggestion.score, reason=suggestion.reason))
+    return response_type(generated_at=now_ts, items=items)
 
 
-@router.get("", response_model=RecommendationsResponse, response_model_exclude_none=True)
+@router.get("", response_model=RecommendationsResponse)
 def recommendations(user: CurrentUser, db: DbSession, limit: int = Query(default=20, ge=1, le=50)):
     """Places worth trying, ranked against the user's own interest profile."""
     return _recommend(db, user, limit)
 
 
-@router.get("/nearby", response_model=RecommendationsResponse)
+@router.get("/nearby", response_model=NearbyRecommendationsResponse)
 def recommendations_nearby(
     user: CurrentUser,
     db: DbSession,
