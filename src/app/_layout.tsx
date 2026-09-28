@@ -40,6 +40,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="import" options={{ headerShown: true, title: 'Import' }} />
         <Stack.Screen
           name="visit/[id]"
           options={{

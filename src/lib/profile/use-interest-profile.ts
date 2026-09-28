@@ -29,29 +29,34 @@ export interface InterestProfileState {
 export function useInterestProfile(): InterestProfileState {
   const session = useSession();
   const token = session.token;
-  const [base, setBase] = useState<InterestProfile | null>(null);
-  const [hidden, setHiddenSet] = useState<ReadonlySet<string>>(() => new Set());
-  const [loading, setLoading] = useState(true);
+  const [sample] = useState(() => sampleProfile());
+  const [fetched, setFetched] = useState<InterestProfile | null>(null);
+  const [hiddenOverride, setHiddenOverride] = useState<ReadonlySet<string> | null>(null);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+
+  // Signed out, the sample stands in. Both this and `loading` are derived during
+  // render rather than written from an effect, which would cost an extra pass.
+  const base = token ? fetched : sample;
+  const key = token && session.ready ? `${token}:${version}` : null;
+  const loading = key != null && loadedKey !== key && fetched == null;
+
+  const hidden = useMemo(
+    () => hiddenOverride ?? (base ? hiddenCategories(base) : new Set<string>()),
+    [hiddenOverride, base],
+  );
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   const adopt = useCallback((profile: InterestProfile) => {
-    setBase(profile);
-    setHiddenSet(hiddenCategories(profile));
+    setFetched(profile);
+    setHiddenOverride(hiddenCategories(profile));
   }, []);
 
   useEffect(() => {
-    if (!session.ready) return undefined;
-    if (!token) {
-      adopt(sampleProfile());
-      setError(null);
-      setLoading(false);
-      return undefined;
-    }
+    if (key == null || token == null) return undefined;
     let cancelled = false;
-    setLoading(true);
     fetchProfile(token)
       .then((profile) => {
         if (cancelled) return;
@@ -62,12 +67,12 @@ export function useInterestProfile(): InterestProfileState {
         if (!cancelled) setError(describeError(failure));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoadedKey(key);
       });
     return () => {
       cancelled = true;
     };
-  }, [token, session.ready, version, adopt]);
+  }, [key, token, adopt]);
 
   const setHidden = useCallback(
     (category: string, value: boolean) => {
@@ -75,7 +80,7 @@ export function useInterestProfile(): InterestProfileState {
       const next = new Set(previous);
       if (value) next.add(category);
       else next.delete(category);
-      setHiddenSet(next);
+      setHiddenOverride(next);
       if (!token) return; // signed out: the sample profile is local only
 
       patchInterestHidden(token, category, value)
@@ -84,7 +89,7 @@ export function useInterestProfile(): InterestProfileState {
           setError(null);
         })
         .catch((failure: unknown) => {
-          setHiddenSet(previous);
+          setHiddenOverride(previous);
           setError(describeError(failure));
         });
     },
@@ -92,5 +97,5 @@ export function useInterestProfile(): InterestProfileState {
   );
 
   const profile = useMemo(() => (base ? applyHidden(base, hidden) : null), [base, hidden]);
-  return { profile, loading: loading && base == null, error, isSample: token == null, setHidden, reload };
+  return { profile, loading, error, isSample: token == null, setHidden, reload };
 }
