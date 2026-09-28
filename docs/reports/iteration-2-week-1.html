@@ -1,0 +1,85 @@
+<title>Orbit Iteration 2 Report</title>
+<style>
+  :root { --bg: #ffffff; --ink: #111111; --ink-2: #555555; --line: #dddddd; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111418; --ink: #f2f2f2; --ink-2: #aaaaaa; --line: #333333; } }
+  :root[data-theme="dark"] { --bg: #111418; --ink: #f2f2f2; --ink-2: #aaaaaa; --line: #333333; }
+  body { margin: 0; padding-block: 32px 48px; padding-inline: 20px; background: var(--bg); color: var(--ink);
+         font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 1.5; }
+  .page { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 24px 0 8px; }
+  p { margin: 0 0 10px; }
+  .meta { color: var(--ink-2); margin-bottom: 16px; font-size: 15px; }
+  ul { margin: 0 0 10px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .shots img { width: 100%; height: auto; display: block; border: 1px solid var(--line); }
+  @media (max-width: 520px) { .shots { grid-template-columns: repeat(2, 1fr); } }
+  h3 { font-size: 16px; margin: 18px 0 6px; }
+  table.results { border-collapse: collapse; margin: 6px 0 10px; font-size: 14px; }
+  table.results th, table.results td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: right; }
+  table.results th:first-child, table.results td:first-child { text-align: left; padding-left: 0; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 0.88em; }
+  @page { size: Letter; margin: 20mm; }
+  @media print {
+    :root { --bg: #fff; --ink: #111; --ink-2: #555; --line: #ddd; }
+    body { padding: 0; font-size: 11pt; }
+    .page { max-width: none; }
+    h2.shots-title { break-before: page; margin-top: 0; }
+    .accuracy { break-inside: avoid; }
+    .shots { max-width: 150mm; margin: 0 auto; }
+  }
+</style>
+
+<div class="page">
+  <h1>Orbit – Iteration 2 Progress Report (Week 1)</h1>
+  <div class="meta">
+    Team Adobe: George Dai (lead), Zayd Nadir, Tanish Bandari, Hussam Makhoul, Roger Liu<br>
+    CSCE 482 · September 21, 2026
+  </div>
+  <p>Orbit is a mobile app that records your location history on your own phone, imports your Google Timeline export, and shows your visits on a map and a timeline. Iteration 2 is about interpreting that history: turning each visit into a real place, and those places into an interest profile you can see and edit.</p>
+
+  <h2>What we did last week</h2>
+  <p>We split Iteration 2 in half. Part 1 (places and the interest profile) was built and merged this week. We agreed on a shared data contract first, so all five of us could start on day one without waiting for each other.</p>
+  <ul>
+    <li><strong>Place resolution (Roger).</strong> Given a visit and the places near it, the ranker decides which one you were at, and how sure it is. It uses distance, visit length, opening hours and how often you’ve been there. The interest model turns resolved visits into weights per category, with older visits counting less.</li>
+    <li><strong>Places and profile API (Zayd).</strong> We now have our own OpenStreetMap place index, filled by a loader script, so place resolution never sends your visits to a third-party service. <code>POST /visits/recompute</code> attaches a place to each visit when the ranker is confident enough. <code>GET /profile</code> returns your interests and top places, and you can hide any category.</li>
+    <li><strong>Sign-in and sync (Tanish).</strong> The app signs in and uploads its points to the backend in batches of 1,000. It tracks what has already been uploaded, so a dropped connection resumes where it stopped without losing or duplicating points, and it retries with backoff. End to end, the sample week (2,177 points) synced with nothing left pending.</li>
+    <li><strong>Heatmap and Profile tab (Hussam).</strong> The Map tab has a heatmap mode with 7-day, 30-day and all-time ranges, in light and dark mode. A new Profile tab shows your interests with show/hide switches and your most-visited places. For now it uses a sample profile with the same shape as the API.</li>
+    <li><strong>Evaluation (George).</strong> A harness scores any place ranker on hand-labeled visits with one command, and a written protocol sets out how we’ll label three weeks of our own data.</li>
+    <li>All five PRs are merged into <code>main</code>. 103 app tests and 133 backend tests pass, and every check CI runs (typecheck, tests, expo-doctor, backend tests) passes on <code>main</code>.</li>
+  </ul>
+
+  <div class="accuracy">
+  <h3>First accuracy numbers</h3>
+  <p>These come from George’s harness (<code>cd backend &amp;&amp; python -m evaluation.places</code>) on the committed synthetic set: 40 visits around campus, 36 at a real place and 4 deliberately at no place.</p>
+  <table class="results">
+    <tr><th>Ranker</th><th>Top-1</th><th>Top-3</th><th>Precision</th><th>Recall</th><th>No place assigned</th></tr>
+    <tr><td>Nearest place (baseline)</td><td>88.9%</td><td>100%</td><td>83.8%</td><td>86.1%</td><td>7.5%</td></tr>
+    <tr><td>Random (sanity check)</td><td>22.2%</td><td>69.4%</td><td>0.0%</td><td>0.0%</td><td>92.5%</td></tr>
+    <tr><td><strong>Roger’s ranker</strong></td><td><strong>100%</strong></td><td><strong>100%</strong></td><td><strong>97.1%</strong></td><td><strong>91.7%</strong></td><td>15.0%</td></tr>
+  </table>
+  <p>The ranker fixes the cases where distance alone gets it wrong, such as a café inside the library or a smoothie counter inside the gym. It is more cautious, though: it leaves 15% of visits without a place, compared with 7.5% for the baseline. Three of its four misses are real places it wasn’t confident enough to assign. This set is synthetic and tidy, so these numbers are optimistic. The real accuracy number will come from hand labels.</p>
+  </div>
+
+  <h2>What we are doing this week</h2>
+  <ul>
+    <li>Load the real College Station OpenStreetMap extract and run place resolution on our own imported history.</li>
+    <li>Start hand-labeling following <code>docs/eval/labeling-protocol.md</code>: each of us labels only our own visits, and 10% get a blind second label so we can report agreement. Label files stay off GitHub; they are gitignored and covered by the IRB protocol.</li>
+    <li>Connect the Profile tab to the live <code>/profile</code> API now that sign-in and sync are merged.</li>
+    <li>Make development builds so we can test background tracking and sync on real phones.</li>
+  </ul>
+
+  <h2>What we will do by the end of Iteration 2</h2>
+  <p>The goal is v0.5 beta: profile, recommendations and predictions live in the app. Part 1 is merged: visits get places, and the profile exists on both the server and in the app. Part 2 adds recommendations (including nearby suggestions), the next-place predictor, and the popularity baseline the recommender has to beat. The main risks are gaps in OpenStreetMap coverage (if a place isn’t in the index, no ranker can pick it), collecting enough labeled visits (roughly 300), and background tracking on real phones, which needs development builds.</p>
+
+  <h2 class="shots-title">Screenshots</h2>
+  <div class="shots">
+    <img src="assets/m2-heatmap-30d.png" alt="Heatmap, last 30 days">
+    <img src="assets/m2-heatmap-30d-dark.png" alt="Heatmap in dark mode">
+    <img src="assets/m2-settings-sync.png" alt="Account and sync, signed in and up to date">
+    <img src="assets/m2-profile.png" alt="Profile tab">
+    <img src="assets/m2-profile-hidden.png" alt="Profile with Libraries hidden">
+    <img src="assets/m2-profile-dark.png" alt="Profile tab in dark mode">
+  </div>
+</div>
