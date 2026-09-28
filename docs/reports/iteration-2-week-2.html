@@ -1,0 +1,89 @@
+<title>Orbit Iteration 2 Week 2 Report</title>
+<style>
+  :root { --bg: #ffffff; --ink: #111111; --ink-2: #555555; --line: #dddddd; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111418; --ink: #f2f2f2; --ink-2: #aaaaaa; --line: #333333; } }
+  :root[data-theme="dark"] { --bg: #111418; --ink: #f2f2f2; --ink-2: #aaaaaa; --line: #333333; }
+  body { margin: 0; padding-block: 32px 48px; padding-inline: 20px; background: var(--bg); color: var(--ink);
+         font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 1.5; }
+  .page { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 24px 0 8px; }
+  p { margin: 0 0 10px; }
+  .meta { color: var(--ink-2); margin-bottom: 16px; font-size: 15px; }
+  ul { margin: 0 0 10px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .shots img { width: 100%; height: auto; display: block; border: 1px solid var(--line); }
+  @media (max-width: 520px) { .shots { grid-template-columns: repeat(2, 1fr); } }
+  h3 { font-size: 16px; margin: 18px 0 6px; }
+  table.results { border-collapse: collapse; margin: 6px 0 10px; font-size: 14px; }
+  table.results th, table.results td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: right; }
+  table.results th:first-child, table.results td:first-child { text-align: left; padding-left: 0; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 0.88em; }
+  @page { size: Letter; margin: 20mm; }
+  @media print {
+    :root { --bg: #fff; --ink: #111; --ink-2: #555; --line: #ddd; }
+    body { padding: 0; font-size: 10.4pt; }
+    .page { max-width: none; }
+    h2.shots-title { break-before: page; margin-top: 0; }
+    .accuracy { break-inside: avoid; }
+    .shots { max-width: 150mm; margin: 0 auto; }
+  }
+</style>
+
+<div class="page">
+  <h1>Orbit – Iteration 2 Progress Report (Week 2)</h1>
+  <div class="meta">
+    Team Adobe: George Dai (lead), Zayd Nadir, Tanish Bandari, Hussam Makhoul, Roger Liu<br>
+    CSCE 482 · September 28, 2026
+  </div>
+  <p>Orbit records your location history on your own phone, turns it into visits, and matches those visits to real places. This week finished Iteration 2: the app now suggests places to try and predicts where you are likely to go next.</p>
+
+  <h2>What we did last week</h2>
+  <p>Part 2 is built and merged. Six pull requests went into <code>main</code>, and the whole stack runs together.</p>
+  <ul>
+    <li><strong>Recommender and predictor (Roger).</strong> The recommender scores places you have never been against your interest profile, using how long you tend to stay, whether the place is open, and how long it has been since you tried that kind of place. The predictor blends where you usually go next, the time of day and day of week, and how recently you went.</li>
+    <li><strong>Recommendation API (Zayd).</strong> <code>GET /recommendations</code> and <code>/recommendations/nearby</code> return suggestions with a one-line reason each; <code>GET /predict/next</code> returns the three most likely next places. Saving or dismissing a suggestion is remembered, and a dismissed place never comes back.</li>
+    <li><strong>Background jobs and two-way sync (Tanish).</strong> Recompute no longer blocks a request: it is queued and a worker process runs it, with retries and a job status endpoint. Sync now works in both directions, so the phone gets the server’s resolved visits and their place names back.</li>
+    <li><strong>Discover screen and live profile (Hussam).</strong> The Profile tab shows your real profile instead of the sample. Visits show real place names with category icons on the timeline, the map and visit detail. The new Discover tab has a “likely next” card and a suggestion list with Save, Dismiss and Undo, plus a “Nearby now” mode.</li>
+    <li><strong>Evaluation (George).</strong> A second harness measures recommendations against a popularity baseline on held-out months, and prediction against a most-frequent-place baseline, on a 12-week synthetic history.</li>
+    <li>254 backend tests and 127 app tests pass, and every check CI runs passes on <code>main</code>.</li>
+  </ul>
+
+  <div class="accuracy">
+  <h3>Accuracy this week</h3>
+  <p>All numbers are from George’s harnesses on synthetic data (<code>cd backend &amp;&amp; python -m evaluation.places | recommend | predict</code>). Synthetic data is tidier than real life, so these are optimistic.</p>
+  <table class="results">
+    <tr><th>What</th><th>Ours</th><th>Baseline</th><th>Reading</th></tr>
+    <tr><td>Place resolution (top-1)</td><td><strong>100%</strong></td><td>88.9% nearest place</td><td>Fixes what distance alone gets wrong</td></tr>
+    <tr><td>Place resolution (precision)</td><td><strong>97.1%</strong></td><td>83.8%</td><td>Assigns fewer visits, right when it does</td></tr>
+    <tr><td>Next place (top-1)</td><td><strong>84.9%</strong></td><td>16.0% most-frequent</td><td>Time of day does most of the work</td></tr>
+    <tr><td>Next place (top-3)</td><td><strong>89.2%</strong></td><td>61.8%</td><td></td></tr>
+    <tr><td>Recommendations, new places (hit@10)</td><td>15.8%</td><td><strong>18.4% popularity</strong></td><td><strong>Below the bar</strong></td></tr>
+    <tr><td>Recommendations (MRR)</td><td><strong>8.0%</strong></td><td>5.5%</td><td>When right, ranked higher</td></tr>
+    <tr><td>Recommendations (catalog covered)</td><td><strong>30.5%</strong></td><td>15.0%</td><td>Twice as many different places</td></tr>
+  </table>
+  <p><strong>The recommender does not yet clear the popularity baseline, which is this iteration’s exit criterion.</strong> It is 2.6 points behind at k=10. The reason is visible in the other two rows: it deliberately spreads suggestions across categories and places, which costs hit-rate against a baseline that just names the most popular places over and over. Roger has the tuning knobs for that trade-off, and the harness now reports it on every run, so next week’s job is to find the setting that keeps the variety and clears the bar.</p>
+  </div>
+
+  <h2>What we are doing this week</h2>
+  <ul>
+    <li>Tuning the recommender against the harness until it beats the popularity baseline, and re-checking the trade-off between variety and hit-rate.</li>
+    <li>Hand-labeling three weeks of our own history (<code>docs/eval/labeling-protocol.md</code>), so we can report real accuracy instead of synthetic. <code>docs/eval/results.md</code> is waiting with every number marked TODO.</li>
+    <li>Battery profiling of background tracking, which was cut from Part 2 when the sprint filled up, plus development builds so we can test on real phones.</li>
+    <li>Loading the full College Station map extract and running everything against our own imported history.</li>
+  </ul>
+
+  <h2>What we will do by the end of Iteration 2</h2>
+  <p>v0.5 beta is feature-complete in the app: profile, recommendations and predictions are all live. What is left is evidence, not code: the recommender over the baseline, real hand-labeled accuracy, and a battery measurement. Iteration 3 is then about owning your data end to end.</p>
+
+  <h2 class="shots-title">Screenshots</h2>
+  <div class="shots">
+    <img src="assets/m2b-timeline-places.png" alt="Timeline with real place names">
+    <img src="assets/m2b-discover-real.png" alt="Discover with recommendations and the next-place card">
+    <img src="assets/m2b-profile-real.png" alt="Profile tab on live data">
+    <img src="assets/m2b-discover-dark.png" alt="Discover in dark mode">
+    <img src="assets/m2b-discover-undo.png" alt="Undo after dismissing a suggestion">
+    <img src="assets/m2b-settings-import.png" alt="Settings, with Import moved in">
+  </div>
+</div>
