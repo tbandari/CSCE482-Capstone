@@ -52,3 +52,4 @@ backend/.env
 
 # Hand labels: real location history, never committed (see docs/eval/labeling-protocol.md)
 backend/evaluation/data/real/
+backend/*.egg-info/
