@@ -10,9 +10,11 @@ import type { RangeQuery, Store } from '@/lib/db/store-types';
 import { resetSyncState } from '@/lib/settings';
 import type { DataStats, ImportRecord, LocationPoint, Visit } from '@/lib/types';
 
-const STORAGE_KEY = 'orbit.store.v1';
+const STORAGE_KEY = 'orbit.store.v2';
+const LEGACY_STORAGE_KEY = 'orbit.store.v1';
 
 interface Snapshot {
+  schemaVersion: 2;
   points: LocationPoint[];
   visits: Visit[];
   imports: ImportRecord[];
@@ -29,14 +31,23 @@ function load(): Snapshot {
   if (snapshot) return snapshot;
   let parsed: Partial<Snapshot> | null = null;
   try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
+    const raw =
+      globalThis.localStorage?.getItem(STORAGE_KEY) ??
+      globalThis.localStorage?.getItem(LEGACY_STORAGE_KEY);
     parsed = raw ? (JSON.parse(raw) as Partial<Snapshot>) : null;
   } catch {
     parsed = null;
   }
   snapshot = {
+    schemaVersion: 2,
     points: parsed?.points ?? [],
-    visits: parsed?.visits ?? [],
+    visits: (parsed?.visits ?? []).map((visit) => ({
+      ...visit,
+      placeId: visit.placeId ?? null,
+      placeName: visit.placeName ?? null,
+      placeCategory: visit.placeCategory ?? null,
+      placeConfidence: visit.placeConfidence ?? null,
+    })),
     imports: parsed?.imports ?? [],
     nextPointId: parsed?.nextPointId ?? 1,
     nextVisitId: parsed?.nextVisitId ?? 1,
@@ -112,6 +123,16 @@ export const store: Store = {
     notifyDataChanged();
   },
 
+  async replaceVisitsFrom(from, visits) {
+    const data = load();
+    data.visits = [
+      ...data.visits.filter((visit) => visit.startTs < from),
+      ...visits.map((visit) => ({ ...visit, id: data.nextVisitId++ })),
+    ];
+    persist();
+    notifyDataChanged();
+  },
+
   async getVisits(query = {}) {
     const data = load();
     const result = data.visits
@@ -161,7 +182,14 @@ export const store: Store = {
   },
 
   async clearAll() {
-    snapshot = { points: [], visits: [], imports: [], nextPointId: 1, nextVisitId: 1 };
+    snapshot = {
+      schemaVersion: 2,
+      points: [],
+      visits: [],
+      imports: [],
+      nextPointId: 1,
+      nextVisitId: 1,
+    };
     pointKeys.clear();
     persist();
     resetSyncState();

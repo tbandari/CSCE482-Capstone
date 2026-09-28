@@ -26,16 +26,20 @@ describe('sync cursor reset', () => {
   test('sign-out resets the cursor and last-sync time', async () => {
     settings.set('lastSyncedPointId', 42);
     settings.set('lastSyncAt', 1234);
+    settings.set('serverVisitsSyncedAt', 5678);
     await signOut();
     expect(settings.get('lastSyncedPointId')).toBe(0);
     expect(settings.get('lastSyncAt')).toBeNull();
+    expect(settings.get('serverVisitsSyncedAt')).toBe(0);
   });
 
   test('clearAll resets the cursor and last-sync time', async () => {
     settings.set('lastSyncedPointId', 42);
     settings.set('lastSyncAt', 1234);
+    settings.set('serverVisitsSyncedAt', 5678);
     await webStore.clearAll();
     expect(settings.get('lastSyncedPointId')).toBe(0);
     expect(settings.get('lastSyncAt')).toBeNull();
+    expect(settings.get('serverVisitsSyncedAt')).toBe(0);
   });
 });

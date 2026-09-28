@@ -38,6 +38,10 @@ function buildVisit(cluster: readonly LocationPoint[]): Visit {
     radius: Math.round(radius),
     pointCount: cluster.length,
     label: null,
+    placeId: null,
+    placeName: null,
+    placeCategory: null,
+    placeConfidence: null,
   };
 }
 
@@ -54,6 +58,10 @@ function mergeVisits(a: Visit, b: Visit): Visit {
     radius: Math.round(Math.max(a.radius, b.radius) + separation / 2),
     pointCount: total,
     label: a.label ?? b.label,
+    placeId: null,
+    placeName: null,
+    placeCategory: null,
+    placeConfidence: null,
   };
 }
 

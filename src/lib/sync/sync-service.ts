@@ -7,6 +7,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { signOut } from '@/lib/api/auth';
 import { uploadPoints } from '@/lib/api/locations';
+import { fetchVisits } from '@/lib/api/visits';
 import {
   ensureSessionLoaded,
   getSession,
@@ -133,6 +134,7 @@ const syncService = new SyncService({
       store,
       api: {
         upload: (points) => uploadPoints(points, session.token as string),
+        fetchVisits: (options) => fetchVisits(options, session.token as string),
         signOut,
       },
       getCursor: () => settings.get('lastSyncedPointId'),
@@ -141,6 +143,8 @@ const syncService = new SyncService({
         settings.set('lastSyncAt', syncedAt);
       },
       now: Date.now,
+      getVisitsCursor: () => settings.get('serverVisitsSyncedAt'),
+      setVisitsCursor: (startTs) => settings.set('serverVisitsSyncedAt', startTs),
     });
   },
   getPending: countPending,

@@ -25,6 +25,8 @@ export interface Store {
 
   /** Replaces every stored visit. Visits are derived data, so this is always safe. */
   replaceVisits(visits: readonly Visit[]): Promise<void>;
+  /** Replaces visits at or after a timestamp while preserving older local rows. */
+  replaceVisitsFrom(from: number, visits: readonly Visit[]): Promise<void>;
   /** Visits ordered newest first. */
   getVisits(query?: RangeQuery): Promise<Visit[]>;
   getVisit(id: number): Promise<Visit | null>;

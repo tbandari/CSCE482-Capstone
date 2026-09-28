@@ -115,6 +115,14 @@ Details, endpoints and PostgreSQL setup: [backend/README.md](backend/README.md).
    the clean trace into **visits**, which are always derived and can be recomputed.
 4. Map, timeline and visit detail read visits; Settings exposes recompute, stats and
    hard delete.
+5. When signed in, sync uploads unsent points first and then downloads resolved
+   server visits with their place names. Each phase keeps its own cursor, so a
+   failed download does not undo an upload that the server already accepted.
+
+Server recompute runs as a background job. Start `python -m app.worker` beside
+the API, call `POST /visits/recompute`, and follow the returned id at
+`GET /jobs/{job_id}`. The next successful app sync refreshes local visits from
+the server.
 
 ## Conventions
 

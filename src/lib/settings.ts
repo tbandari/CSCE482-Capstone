@@ -13,6 +13,8 @@ export interface Settings {
   /** Highest local point id acknowledged by the current cloud account. */
   lastSyncedPointId: number;
   lastSyncAt: number | null;
+  /** Highest server visit start time downloaded successfully. */
+  serverVisitsSyncedAt: number;
 }
 
 const DEFAULTS: Settings = {
@@ -20,6 +22,7 @@ const DEFAULTS: Settings = {
   trackingEnabled: false,
   lastSyncedPointId: 0,
   lastSyncAt: null,
+  serverVisitsSyncedAt: 0,
 };
 
 const PREFIX = 'orbit.settings.';
@@ -64,6 +67,7 @@ export const settings = { get: read, set: write, subscribe };
 export function resetSyncState(): void {
   write('lastSyncedPointId', 0);
   write('lastSyncAt', null);
+  write('serverVisitsSyncedAt', 0);
 }
 
 export function useSetting<K extends keyof Settings>(key: K): Settings[K] {

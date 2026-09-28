@@ -1,4 +1,5 @@
 import math
+from collections.abc import Callable
 
 from fastapi.testclient import TestClient
 
@@ -55,7 +56,9 @@ def morning_trace():
     )
 
 
-def test_recompute_finds_three_visits(client: TestClient, auth: dict[str, str]) -> None:
+def test_recompute_finds_three_visits(
+    client: TestClient, auth: dict[str, str], recompute_job: Callable[[dict[str, str]], dict]
+) -> None:
     trace = morning_trace()
     # Inject a spike and a low-accuracy fix between two regular samples; the filter must drop both.
     trace.append({"ts": T0 + HOUR + 30_000, "lat": 30.7, "lon": -96.3217, "accuracy": 10})
@@ -65,9 +68,7 @@ def test_recompute_finds_three_visits(client: TestClient, auth: dict[str, str]) 
     assert ingest.status_code == 200
     assert ingest.json()["inserted"] == len(trace)
 
-    result = client.post("/visits/recompute", headers=auth)
-    assert result.status_code == 200
-    body = result.json()
+    body = recompute_job(auth)
     assert body["points"] == len(trace)
     assert body["dropped"]["spike"] == 1
     assert body["dropped"]["inaccurate"] == 1
@@ -87,14 +88,16 @@ def test_recompute_finds_three_visits(client: TestClient, auth: dict[str, str]) 
     assert stats["visits"] == 3
 
     # Recomputing is idempotent: visits are replaced, not appended.
-    client.post("/visits/recompute", headers=auth)
+    recompute_job(auth)
     assert len(client.get("/visits", headers=auth).json()) == 3
 
 
-def test_export_contains_everything(client: TestClient, auth: dict[str, str]) -> None:
+def test_export_contains_everything(
+    client: TestClient, auth: dict[str, str], recompute_job: Callable[[dict[str, str]], dict]
+) -> None:
     trace = morning_trace()
     client.post("/locations/batch", json={"points": trace}, headers=auth)
-    client.post("/visits/recompute", headers=auth)
+    recompute_job(auth)
 
     export = client.get("/export", headers=auth)
     assert export.status_code == 200
