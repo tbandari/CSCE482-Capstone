@@ -1,0 +1,16 @@
+    Next-place prediction · student.json (SYNTHETIC) · 217 visits over 83 days · 212 scored after a 5-visit warm-up
+
+predictor         top-1     top-3  predictions  declined
+-------------     -----     -----  -----------  --------
+most_frequent     16.0%     61.8%          212         0
+
+    predict_next_place not available yet, showing the baseline only
+
+    most_frequent · accuracy by slice
+      time of day
+        morning      n=102  top-1   33.3%  top-3   88.2%
+        afternoon    n=63   top-1    0.0%  top-3   65.1%
+        evening      n=47   top-1    0.0%  top-3    0.0%
+      day type
+        weekday      n=176  top-1   19.3%  top-3   68.8%
+        weekend      n=36   top-1    0.0%  top-3   27.8%

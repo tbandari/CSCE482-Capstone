@@ -1,0 +1,28 @@
+    Recommendation · temporal hold-out · 6 case(s): peer-01, peer-02, peer-03, peer-04, peer-05, student
+    6 file(s) · 641 training visits, 233 held out
+    truth: 38 new places, 72 distinct held-out places · catalog 200 places
+
+    new places only -- never visited before the cutoff (the headline)
+recommender           hit@5   hit@10   hit@20      MRR   places  cats  leaks
+------------------    -----   ------   ------      ---   ------  ----  -----
+popularity            13.2%    18.4%    34.2%     5.5%       30    15      0
+personal_frequency     0.0%     0.0%     0.0%     0.0%       33    18     51
+random(seed=0)         0.0%     0.0%     5.3%     0.3%       68    21      0
+    3 of 38 held-out new places are not in the catalog (OSM coverage gap): a miss for everyone, not a model failure
+
+    all held-out places -- revisits included (context, not the verdict)
+recommender           hit@5   hit@10   hit@20      MRR   places  cats  leaks
+------------------    -----   ------   ------      ---   ------  ----  -----
+popularity             6.9%     9.7%    18.1%     2.9%       30    15      0
+personal_frequency    36.1%    47.2%    47.2%    18.0%       33    18     51
+random(seed=0)         0.0%     0.0%     2.8%     0.2%       68    21      0
+
+    coverage
+      popularity              30/200 places (15.0%), 15/23 categories
+      personal_frequency      33/200 places (16.5%), 18/23 categories
+      random(seed=0)          68/200 places (34.0%), 21/23 categories
+
+    recommend_places not available yet, showing baselines only
+    (app/ml/types.py has no VisitRecord yet either -- running on evaluation/contract.py)
+
+    VERDICT: recommend_places is not installed yet -- no verdict. Baselines are the bar to clear.
