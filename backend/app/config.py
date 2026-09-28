@@ -21,5 +21,10 @@ class Settings(BaseSettings):
     # Opening hours are local time; one zone is enough until users travel (Part 2: per-visit zone).
     place_timezone: str = "America/Chicago"
 
+    # Recommendations: with no explicit centre, look this far around the middle of the
+    # user's resolved visits, and rank at most this many candidates.
+    recommend_home_radius_m: float = 15000
+    recommend_max_candidates: int = 300
+
 
 settings = Settings()

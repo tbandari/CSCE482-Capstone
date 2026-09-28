@@ -8,6 +8,7 @@ from app.deps import CurrentUser, DbSession
 from app.ml.types import CATEGORIES
 from app.models import InterestOverride, Place, User, Visit
 from app.places import ml
+from app.places.profile import hidden_categories, interest_weights, resolved_visits
 from app.schemas import InterestOut, InterestPatch, ProfileOut, TopPlaceOut
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -17,28 +18,13 @@ TOP_PLACES = 10
 
 def build_profile(db: Session, user: User) -> ProfileOut:
     """The interest profile, computed fresh from the user's resolved visits and their edits."""
+    hidden = hidden_categories(db, user.id)
+    total_visits = db.scalar(select(func.count(Visit.id)).where(Visit.user_id == user.id)) or 0
+    resolved = resolved_visits(db, user.id)
     try:
-        build_interests = ml.get_profile_builder()
+        interests = interest_weights(db, user.id, resolved)
     except ml.ModelsUnavailable as error:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The interest model is not installed yet") from error
-
-    hidden = set(
-        db.scalars(
-            select(InterestOverride.category).where(
-                InterestOverride.user_id == user.id, InterestOverride.hidden.is_(True)
-            )
-        )
-    )
-    total_visits = db.scalar(select(func.count(Visit.id)).where(Visit.user_id == user.id)) or 0
-    resolved = db.execute(
-        select(Visit, Place)
-        .join(Place, Visit.place_id == Place.id)
-        .where(Visit.user_id == user.id)
-        .order_by(Visit.start_ts.asc())
-    ).all()
-    interests = build_interests(
-        [(ml.visit_features(visit), ml.place_candidate(place)) for visit, place in resolved], hidden=hidden
-    )
 
     # Hidden categories are hidden everywhere: their places don't show up as favourites either.
     visit_count = func.count(Visit.id).label("visits")
