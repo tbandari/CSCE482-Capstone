@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,9 +20,14 @@ def models(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def day(client: TestClient, auth: dict[str, str], places: dict[str, int]) -> dict[str, int]:
+def day(
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    recompute_job: Callable[[dict[str, str]], dict],
+) -> dict[str, int]:
     upload(client, auth, campus_day())
-    assert client.post("/visits/recompute", headers=auth).json()["resolved"] == 4
+    assert recompute_job(auth)["resolved"] == 4
     return places
 
 
