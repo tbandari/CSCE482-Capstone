@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 
 import { Row, Section } from '@/components/grouped-list';
+import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import VisitsMap from '@/components/visits-map';
 import { MapColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -15,6 +16,8 @@ import {
   formatDistance,
   formatDuration,
 } from '@/lib/format';
+import { visitCategory, visitPlaceName } from '@/lib/place-label';
+import { categoryInfo } from '@/lib/profile/categories';
 
 export default function VisitScreen() {
   const theme = useTheme();
@@ -39,9 +42,12 @@ export default function VisitScreen() {
     );
   }
 
+  const categoryKey = visitCategory(visit);
+  const category = categoryKey ? categoryInfo(categoryKey) : null;
+
   return (
     <>
-      <Stack.Screen options={{ title: formatDayHeading(visit.startTs) }} />
+      <Stack.Screen options={{ title: visitPlaceName(visit) ?? formatDayHeading(visit.startTs) }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={{ flex: 1, backgroundColor: theme.background }}
@@ -62,6 +68,7 @@ export default function VisitScreen() {
                 startTs: visit.startTs,
                 endTs: visit.endTs,
                 pointCount: visit.pointCount,
+                title: visitPlaceName(visit),
               },
             ]}
             path={[]}
@@ -81,8 +88,18 @@ export default function VisitScreen() {
 
         <Section
           title="Place"
-          footer="Names arrive in month 2, when visits are matched against our own OpenStreetMap index. Nothing about this visit leaves your phone.">
-          <Row title="Label" value={visit.label ?? 'Unresolved'} />
+          footer="Names come from our own OpenStreetMap index, matched on the server. Nothing about this visit goes to a third party.">
+          <Row
+            title="Place"
+            value={visitPlaceName(visit) ?? 'Unresolved'}
+            accessory={
+              category ? <Icon sf={category.sf} md={category.md} size={16} color={theme.textSecondary} /> : undefined
+            }
+          />
+          {category ? <Row title="Category" value={category.label} /> : null}
+          {visit.placeConfidence != null ? (
+            <Row title="Match confidence" value={`${Math.round(visit.placeConfidence * 100)}%`} />
+          ) : null}
           <Row title="Coordinates" value={formatCoordinates(visit.lat, visit.lon)} />
           <Row title="Spread" value={`within ${formatDistance(visit.radius)}`} />
           <Row title="Fixes" value={String(visit.pointCount)} />

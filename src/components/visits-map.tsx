@@ -17,6 +17,11 @@ import { useEffect, useRef } from 'react';
 import { formatDuration, formatTime } from '@/lib/format';
 import { createBaseMap, mapStylesheet } from '@/lib/map/leaflet-base';
 
+/** Place names come from OpenStreetMap data, so they go through the tooltip as text, never as markup. */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
 export interface MapVisit {
   id: number;
   lat: number;
@@ -24,6 +29,8 @@ export interface MapVisit {
   startTs: number;
   endTs: number;
   pointCount: number;
+  /** Resolved place name, when the visit has one. */
+  title?: string | null;
 }
 
 export interface MapFocus {
@@ -106,10 +113,11 @@ export default function VisitsMap({
         fillColor: colors.visit,
         fillOpacity: 0.9,
       }).addTo(layer);
-      marker.bindTooltip(
-        `${formatTime(visit.startTs)} – ${formatTime(visit.endTs)} · ${formatDuration(visit.endTs - visit.startTs)}`,
-        { direction: 'top', offset: [0, -radius] },
-      );
+      const times = `${formatTime(visit.startTs)} – ${formatTime(visit.endTs)} · ${formatDuration(visit.endTs - visit.startTs)}`;
+      marker.bindTooltip(visit.title ? `<b>${escapeHtml(visit.title)}</b><br>${times}` : times, {
+        direction: 'top',
+        offset: [0, -radius],
+      });
       marker.on('click', () => {
         void selectRef.current?.(visit.id);
       });

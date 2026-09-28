@@ -4,12 +4,16 @@ import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatCoordinates, formatDistance, formatDuration, formatTime } from '@/lib/format';
+import { formatDistance, formatDuration, formatTime } from '@/lib/format';
+import { visitCategory, visitTitle } from '@/lib/place-label';
+import { categoryInfo } from '@/lib/profile/categories';
 import type { Visit } from '@/lib/types';
 
 export function VisitRow({ visit, onPress }: { visit: Visit; onPress: () => void }) {
   const theme = useTheme();
   const duration = visit.endTs - visit.startTs;
+  const category = visitCategory(visit);
+  const info = category ? categoryInfo(category) : null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -27,7 +31,12 @@ export function VisitRow({ visit, onPress }: { visit: Visit; onPress: () => void
         <ThemedText variant="headline">
           {formatTime(visit.startTs)} – {formatTime(visit.endTs)}
         </ThemedText>
-        <ThemedText variant="subhead">{visit.label ?? formatCoordinates(visit.lat, visit.lon)}</ThemedText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.one }}>
+          {info ? <Icon sf={info.sf} md={info.md} size={13} color={theme.textSecondary} /> : null}
+          <ThemedText variant="subhead" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {visitTitle(visit)}
+          </ThemedText>
+        </View>
         <ThemedText variant="caption">
           {visit.pointCount} fixes · within {formatDistance(visit.radius)}
         </ThemedText>

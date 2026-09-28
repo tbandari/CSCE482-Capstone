@@ -14,6 +14,7 @@ import { useStoreQuery } from '@/hooks/use-store-query';
 import { store } from '@/lib/db/store';
 import { formatCount, formatDate } from '@/lib/format';
 import { buildHeatGrid } from '@/lib/geo/heat-grid';
+import { visitPlaceName } from '@/lib/place-label';
 import type { DataStats } from '@/lib/types';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -94,6 +95,7 @@ export default function MapScreen() {
     startTs: v.startTs,
     endTs: v.endTs,
     pointCount: v.pointCount,
+    title: visitPlaceName(v),
   }));
 
   const controls = (

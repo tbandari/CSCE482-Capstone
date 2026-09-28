@@ -35,8 +35,18 @@ export interface Visit {
   /** Radius in meters around the centroid that contains every point of the stay. */
   radius: number;
   pointCount: number;
-  /** Semantic or user label ("Home"). Null until place resolution lands in month 2. */
+  /** Semantic or user label ("Home"). */
   label: string | null;
+  /**
+   * The place the server resolved this visit to. Optional because the columns
+   * arrive with sync-down: a visit computed on this phone has no place until the
+   * next sync fills these in.
+   */
+  placeId?: number | null;
+  placeName?: string | null;
+  placeCategory?: string | null;
+  /** 0..1 from the place ranker. */
+  placeConfidence?: number | null;
 }
 
 export type TimelineFormat = 'android-semantic' | 'ios-semantic' | 'legacy-records';
