@@ -16,9 +16,9 @@ describe('visit place labels', () => {
 
   test('treats blank and missing fields as unresolved', () => {
     expect(visitPlaceName({ ...base, placeName: '   ' })).toBeNull();
-    expect(visitPlaceName({ label: null })).toBeNull();
+    expect(visitPlaceName({ label: null, placeName: null })).toBeNull();
     expect(visitCategory({ placeCategory: '  ' })).toBeNull();
-    expect(visitCategory({})).toBeNull();
+    expect(visitCategory({ placeCategory: null })).toBeNull();
     expect(visitCategory({ placeCategory: 'library' })).toBe('library');
   });
 });
