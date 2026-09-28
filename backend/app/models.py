@@ -48,6 +48,9 @@ class User(Base):
     interest_overrides: Mapped[list["InterestOverride"]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
+    recommendation_feedback: Mapped[list["RecommendationFeedback"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class LocationPoint(Base):
@@ -107,6 +110,21 @@ class Place(Base):
     lon: Mapped[float] = mapped_column(Float)
     opening_hours: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tags: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+
+
+class RecommendationFeedback(Base):
+    """What a user did with a suggestion. Dismissed places never come back."""
+
+    __tablename__ = "recommendation_feedback"
+    __table_args__ = (UniqueConstraint("user_id", "place_id", name="uq_recommendation_feedback"),)
+
+    id: Mapped[int] = mapped_column(BigId, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"), index=True)
+    action: Mapped[str] = mapped_column(String(16))  # saved | dismissed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="recommendation_feedback")
 
 
 class InterestOverride(Base):

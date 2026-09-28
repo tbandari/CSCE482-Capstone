@@ -11,11 +11,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from app.ml.types import InterestWeight, PlaceCandidate, ScoredCandidate, VisitFeatures
+from app.ml.types import (
+    InterestWeight,
+    NextPlace,
+    PlaceCandidate,
+    ScoredCandidate,
+    ScoredPlace,
+    VisitFeatures,
+    VisitRecord,
+)
 from app.models import Place, Visit
 
 Ranker = Callable[..., list[ScoredCandidate]]
 ProfileBuilder = Callable[..., list[InterestWeight]]
+Recommender = Callable[..., list[ScoredPlace]]
+Predictor = Callable[..., list[NextPlace]]
 
 
 class ModelsUnavailable(RuntimeError):
@@ -47,6 +57,26 @@ def get_profile_builder() -> ProfileBuilder:
     return build_interest_profile
 
 
+def get_recommender() -> Recommender:
+    try:
+        from app.ml.recommend import recommend_places
+    except ModuleNotFoundError as error:
+        if not _missing(error, "app.ml.recommend"):
+            raise
+        raise ModelsUnavailable("app.ml.recommend is not installed yet") from error
+    return recommend_places
+
+
+def get_predictor() -> Predictor:
+    try:
+        from app.ml.predict import predict_next_place
+    except ModuleNotFoundError as error:
+        if not _missing(error, "app.ml.predict"):
+            raise
+        raise ModelsUnavailable("app.ml.predict is not installed yet") from error
+    return predict_next_place
+
+
 def visit_features(visit: Visit) -> VisitFeatures:
     return VisitFeatures(
         start_ts=visit.start_ts, end_ts=visit.end_ts, lat=visit.lat, lon=visit.lon, radius=visit.radius
@@ -61,4 +91,10 @@ def place_candidate(place: Place) -> PlaceCandidate:
         lat=place.lat,
         lon=place.lon,
         opening_hours=place.opening_hours,
+    )
+
+
+def visit_record(visit: Visit, place: Place) -> VisitRecord:
+    return VisitRecord(
+        start_ts=visit.start_ts, end_ts=visit.end_ts, place_id=place.id, category=place.category
     )

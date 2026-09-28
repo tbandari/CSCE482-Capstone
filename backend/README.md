@@ -1,7 +1,8 @@
 # Orbit API
 
 FastAPI service for accounts, location ingest, visit detection, place resolution
-against a self-hosted OpenStreetMap index, the interest profile and full export.
+against a self-hosted OpenStreetMap index, the interest profile, recommendations,
+next-place prediction and full export.
 SQLite by default so it runs with zero setup; PostgreSQL + PostGIS via Docker for
 anything real.
 
@@ -16,10 +17,10 @@ uvicorn app.main:app --reload
 
 Interactive docs: http://127.0.0.1:8000/docs
 
-> **Schema changed in Month 2 (places, visit places, interest overrides).** The app
+> **Schema changed again in Month 2 Part 2 (recommendation feedback).** The app
 > still uses `create_all`, which never alters existing tables, so delete your local
 > database once after pulling: `rm orbit-dev.db` (or `docker compose down -v` for
-> Postgres). Alembic migrations replace this in Part 2.
+> Postgres). Alembic migrations replace this in month 3.
 
 ## Load places
 
@@ -59,6 +60,10 @@ uvicorn app.main:app --reload
 | `GET` | `/places/nearby` | Places around `lat`/`lon` (`radius_m` ≤ 5000, `category`, `limit`), nearest first |
 | `GET` | `/profile` | Interest profile: category weights and top places |
 | `PATCH` | `/profile/interests/{category}` | `{"hidden": true}` hides a category everywhere, `false` restores it |
+| `GET` | `/recommendations` | Places worth trying, ranked against the interest profile (`limit` ≤ 50) |
+| `GET` | `/recommendations/nearby` | The same around `lat`/`lon` (`radius_m` ≤ 20000), with `distance_m` |
+| `POST` | `/recommendations/{place_id}/feedback` | `{"action": "saved"\|"dismissed"}`; dismissed places never come back |
+| `GET` | `/predict/next` | Top-3 likely next places at `at_ts` (defaults to now) |
 | `GET` | `/export` | Everything the account owns, as JSON |
 | `GET` | `/health` | Liveness |
 
@@ -80,6 +85,8 @@ Environment variables (or a `.env` file), all prefixed `ORBIT_`:
 | `ORBIT_PLACE_SEARCH_RADIUS_M` | 50 | Places within this distance of a visit are ranked |
 | `ORBIT_PLACE_MIN_CONFIDENCE` | 0.35 | A visit gets a place only if the top candidate clears this |
 | `ORBIT_PLACE_TIMEZONE` | `America/Chicago` | Local time for opening hours |
+| `ORBIT_RECOMMEND_HOME_RADIUS_M` | 15000 | How far around a user's own visits to look for suggestions |
+| `ORBIT_RECOMMEND_MAX_CANDIDATES` | 300 | Places ranked per recommendation request |
 
 ## Place resolution
 
@@ -92,8 +99,23 @@ revisits are strong evidence. `GET /profile` feeds the resolved visits to
 `app.ml.interests.build_interest_profile`. Both models live in `app/ml/` and share
 the dataclasses in `app/ml/types.py`.
 
-The API loads the models lazily (`app/places/ml.py`). Until they are installed,
-recompute still detects visits but resolves none, and `/profile` answers 503.
+## Recommendations and prediction
+
+`GET /recommendations` takes the places a user has never visited and never
+dismissed, drops hidden categories and the ones nobody wants suggested
+(`NEVER_RECOMMEND` in `app/places/recommend.py`), and asks
+`app.ml.recommend.recommend_places` to rank what is left against their interest
+profile. Without an explicit centre it searches around the middle of the user's own
+resolved visits, so a user with no resolved visits gets an empty list rather than a
+guess. `GET /predict/next` feeds the same visit history to
+`app.ml.predict.predict_next_place`.
+
+Feedback is an upsert per (user, place): dismissing removes a place from every
+later response, saving does not.
+
+The API loads all four models lazily (`app/places/ml.py`). Until they are installed,
+recompute still detects visits but resolves none, and `/profile`,
+`/recommendations` and `/predict/next` answer 503.
 
 ## Tests
 
@@ -103,9 +125,9 @@ python -m pytest -q
 
 Tests run against an in-memory SQLite database, so they need no services.
 `tests/fixtures/overpass-sample.json` is a small handmade extract around Texas A&M.
-Most tests run against the real models in `app/ml/`. The profile tests pin the
-simple nearest-place ranker in `tests/rankers.py`, because they check the API, not
-ranking quality.
+Most tests run against the real models in `app/ml/`. The profile, recommendation and
+prediction tests pin the simple models in `tests/rankers.py`, because they check the
+API, not model quality.
 
 ## Layout
 
@@ -114,14 +136,16 @@ app/
   main.py         app factory, CORS, /health
   config.py       settings
   db.py           engine/session factory (SQLite + Postgres)
-  models.py       users, location_points, visits, places, interest_overrides
+  models.py       users, location_points, visits, places, interest_overrides,
+                  recommendation_feedback
   schemas.py      request/response models
   security.py     scrypt password hashing, JWT
   deps.py         DB session + current-user dependencies
   stays.py        noise filter + stay detection (port of the app's src/lib/stays)
   ml/             place ranker + interest model (types.py is the shared contract)
-  places/         OSM categories, loader, spatial queries, visit resolution
-  routers/        auth, locations, visits, places, profile, export
+  places/         OSM categories, loader, spatial queries, visit resolution,
+                  shared profile helpers, recommendation candidates
+  routers/        auth, locations, visits, places, profile, recommendations, predict, export
 scripts/
   load_osm.py     load an Overpass extract into the places table
 tests/

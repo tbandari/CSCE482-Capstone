@@ -144,6 +144,42 @@ class InterestOverrideOut(BaseModel):
     hidden: bool
 
 
+class RecommendationOut(BaseModel):
+    place: PlaceSummary
+    score: float
+    reason: str
+
+
+class NearbyRecommendationOut(RecommendationOut):
+    distance_m: float
+
+
+class RecommendationsResponse(BaseModel):
+    generated_at: int
+    items: list[RecommendationOut]
+
+
+class NearbyRecommendationsResponse(BaseModel):
+    generated_at: int
+    items: list[NearbyRecommendationOut]
+
+
+class FeedbackRequest(BaseModel):
+    action: Literal["saved", "dismissed"]
+
+
+class NextPlaceOut(BaseModel):
+    place: PlaceSummary
+    probability: float
+    rank: int
+
+
+class NextPlacesResponse(BaseModel):
+    generated_at: int
+    at_ts: int
+    predictions: list[NextPlaceOut]
+
+
 class ExportResponse(BaseModel):
     user: UserOut
     exported_at: int
