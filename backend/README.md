@@ -167,10 +167,51 @@ or the network, so it can be tested and tuned in isolation.
   to sum to 1. Hidden categories stay in the output with `weight=0.0` so the UI
   can still list and un-hide them.
 
+## Recommendations and prediction
+
+Two more `app/ml/` models, both standard-library-only like the rest of the package,
+and both built entirely from one user's own history:
+
+- `recommend.py` — `recommend_places(interests, history, candidates, now_ts, limit, tz)`
+  scores each unvisited, non-hidden candidate as a weighted sum:
+  - **Interest match** (`W_INTEREST`): the candidate's category weight from the
+    profile; a category missing from the profile scores `ABSENT_CATEGORY_INTEREST`
+    (near zero) rather than being excluded.
+  - **Category variety** (`W_VARIETY`): a penalty proportional to how much of the
+    user's history is already that category, so a cafés-only history still
+    surfaces non-café suggestions. This deliberately trades hit-rate for
+    discovery — tune `W_VARIETY` against `W_INTEREST` once George's harness can
+    measure that tradeoff on real data.
+  - **Novelty** (`W_NOVELTY`): a bonus that grows with days since the category was
+    last visited (capped at `NOVELTY_FULL_DAYS`), maxed out for a category never
+    visited at all.
+  - **Open now** (`W_OPEN`): reuses `opening_hours.status_at`; closed is a penalty,
+    unknown is neutral.
+  - **Popularity is deliberately not a feature.** There is no cross-user data to
+    compute it from, and being different from a "everyone else goes here"
+    baseline is the point of a personal interest model — see `evaluation/`.
+
+  Scores are normalized to 0–1 within the returned list; `reason` is built from
+  whichever feature contributed most to a candidate's score, using the phrase
+  table in `REASON_TEMPLATES` (not scattered f-strings).
+
+- `predict.py` — `predict_next_place(history, at_ts, top_k)` blends three
+  signals, each normalized to a probability distribution over the places seen in
+  `history` before blending: a **first-order Markov chain** over consecutive
+  places (Laplace-smoothed, conditioned on the most recent place), a
+  **time-of-day/day-of-week** habit match (2-hour buckets, weekday vs. weekend,
+  `TZ`-local), and an **exponentially-decayed recency/frequency** count
+  (`half_life_days`, default 30). The blend weights (`W_TRANSITION`, `W_TIME`,
+  `W_RECENCY`) sum to `1 - NEW_PLACE_MASS`, leaving probability mass unclaimed for
+  "somewhere not in the history at all." Fewer than `MIN_HISTORY_VISITS = 5`
+  visits returns `[]` rather than a guess. No travel-time or calendar model, so a
+  first visit to a new city is out of scope. `predict_next_place`'s signature has
+  no `tz` parameter (fixed contract), so it uses the module constant `TZ` rather
+  than the app's configured time zone.
+
 ## What's next
 
 - Alembic migrations, then PostGIS `geography` columns + GiST indexes on points
   and places (`ST_DWithin` replaces the bounding-box prefilter in `places/queries.py`).
-- Recommendation endpoints on top of the profile (Month 2, Part 2).
-- Per-visit time zones for opening hours.
+- Per-visit time zones for opening hours (and for `predict.py`'s fixed `TZ`).
 - Rate limits on ingest and export.
