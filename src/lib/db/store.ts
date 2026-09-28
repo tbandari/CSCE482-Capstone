@@ -14,11 +14,13 @@ import { resetSyncState } from '@/lib/settings';
 import type { DataStats, ImportRecord, LocationPoint, Visit } from '@/lib/types';
 
 const DATABASE_NAME = 'orbit.db';
-const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
+export async function migrateStore(
+  db: Pick<SQLite.SQLiteDatabase, 'getFirstAsync' | 'execAsync'>,
+): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
   if (current >= SCHEMA_VERSION) return;
@@ -49,7 +51,11 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
         lon REAL NOT NULL,
         radius REAL NOT NULL,
         point_count INTEGER NOT NULL,
-        label TEXT
+        label TEXT,
+        place_id INTEGER,
+        place_name TEXT,
+        place_category TEXT,
+        place_confidence REAL
       );
       CREATE INDEX IF NOT EXISTS visits_start ON visits (start_ts);
 
@@ -61,6 +67,13 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
         point_count INTEGER NOT NULL
       );
     `);
+  } else if (current < 2) {
+    await db.execAsync(`
+      ALTER TABLE visits ADD COLUMN place_id INTEGER;
+      ALTER TABLE visits ADD COLUMN place_name TEXT;
+      ALTER TABLE visits ADD COLUMN place_category TEXT;
+      ALTER TABLE visits ADD COLUMN place_confidence REAL;
+    `);
   }
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
@@ -68,7 +81,7 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
 export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!databasePromise) {
     databasePromise = SQLite.openDatabaseAsync(DATABASE_NAME).then(async (db) => {
-      await migrate(db);
+      await migrateStore(db);
       return db;
     });
   }
@@ -96,6 +109,10 @@ type VisitRow = {
   radius: number;
   point_count: number;
   label: string | null;
+  place_id: number | null;
+  place_name: string | null;
+  place_category: string | null;
+  place_confidence: number | null;
 };
 
 type ImportRow = {
@@ -127,6 +144,10 @@ const toVisit = (row: VisitRow): Visit => ({
   radius: row.radius,
   pointCount: row.point_count,
   label: row.label,
+  placeId: row.place_id,
+  placeName: row.place_name,
+  placeCategory: row.place_category,
+  placeConfidence: row.place_confidence,
 });
 
 const toImport = (row: ImportRow): ImportRecord => ({
@@ -224,8 +245,12 @@ export const store: Store = {
     await db.withExclusiveTransactionAsync(async (tx) => {
       await tx.execAsync('DELETE FROM visits');
       const statement = await tx.prepareAsync(
-        `INSERT INTO visits (start_ts, end_ts, lat, lon, radius, point_count, label)
-         VALUES ($startTs, $endTs, $lat, $lon, $radius, $pointCount, $label)`,
+        `INSERT INTO visits
+           (start_ts, end_ts, lat, lon, radius, point_count, label,
+            place_id, place_name, place_category, place_confidence)
+         VALUES
+           ($startTs, $endTs, $lat, $lon, $radius, $pointCount, $label,
+            $placeId, $placeName, $placeCategory, $placeConfidence)`,
       );
       try {
         for (const v of visits) {
@@ -237,6 +262,45 @@ export const store: Store = {
             $radius: v.radius,
             $pointCount: v.pointCount,
             $label: v.label,
+            $placeId: v.placeId,
+            $placeName: v.placeName,
+            $placeCategory: v.placeCategory,
+            $placeConfidence: v.placeConfidence,
+          });
+        }
+      } finally {
+        await statement.finalizeAsync();
+      }
+    });
+    notifyDataChanged();
+  },
+
+  async replaceVisitsFrom(from, visits) {
+    const db = await getDatabase();
+    await db.withExclusiveTransactionAsync(async (tx) => {
+      await tx.runAsync('DELETE FROM visits WHERE start_ts >= ?', [from]);
+      const statement = await tx.prepareAsync(
+        `INSERT INTO visits
+           (start_ts, end_ts, lat, lon, radius, point_count, label,
+            place_id, place_name, place_category, place_confidence)
+         VALUES
+           ($startTs, $endTs, $lat, $lon, $radius, $pointCount, $label,
+            $placeId, $placeName, $placeCategory, $placeConfidence)`,
+      );
+      try {
+        for (const visit of visits) {
+          await statement.executeAsync({
+            $startTs: visit.startTs,
+            $endTs: visit.endTs,
+            $lat: visit.lat,
+            $lon: visit.lon,
+            $radius: visit.radius,
+            $pointCount: visit.pointCount,
+            $label: visit.label,
+            $placeId: visit.placeId,
+            $placeName: visit.placeName,
+            $placeCategory: visit.placeCategory,
+            $placeConfidence: visit.placeConfidence,
           });
         }
       } finally {

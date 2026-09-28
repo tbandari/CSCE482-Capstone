@@ -37,6 +37,11 @@ export interface Visit {
   pointCount: number;
   /** Semantic or user label ("Home"). Null until place resolution lands in month 2. */
   label: string | null;
+  /** Server resolved OpenStreetMap place, or null for local and unresolved visits. */
+  placeId: number | null;
+  placeName: string | null;
+  placeCategory: string | null;
+  placeConfidence: number | null;
 }
 
 export type TimelineFormat = 'android-semantic' | 'ios-semantic' | 'legacy-records';

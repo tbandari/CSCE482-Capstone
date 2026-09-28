@@ -1,4 +1,5 @@
 import pytest
+from collections.abc import Callable
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -62,10 +63,13 @@ def ranker(monkeypatch: pytest.MonkeyPatch) -> RecordingRanker:
 
 
 def test_recompute_resolves_a_library_stay_and_leaves_an_empty_field_alone(
-    client: TestClient, auth: dict[str, str], places: dict[str, int]
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    recompute_job: Callable[[dict[str, str]], dict],
 ) -> None:
     upload(client, auth, library_then_field())
-    result = client.post("/visits/recompute", headers=auth).json()
+    result = recompute_job(auth)
     assert result["visits"] == 2
     assert result["resolved"] == 1
 
@@ -83,10 +87,14 @@ def test_recompute_resolves_a_library_stay_and_leaves_an_empty_field_alone(
 
 
 def test_resolution_walks_visits_in_order_and_counts_revisits(
-    client: TestClient, auth: dict[str, str], places: dict[str, int], ranker: RecordingRanker
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    ranker: RecordingRanker,
+    recompute_job: Callable[[dict[str, str]], dict],
 ) -> None:
     upload(client, auth, library_coffee_library())
-    assert client.post("/visits/recompute", headers=auth).json()["resolved"] == 3
+    assert recompute_job(auth)["resolved"] == 3
 
     starts = [call["visit"].start_ts for call in ranker.calls]
     assert starts == sorted(starts) and len(starts) == 3
@@ -99,11 +107,15 @@ def test_resolution_walks_visits_in_order_and_counts_revisits(
 
 
 def test_low_confidence_visits_stay_unresolved(
-    client: TestClient, auth: dict[str, str], places: dict[str, int], ranker: RecordingRanker
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    ranker: RecordingRanker,
+    recompute_job: Callable[[dict[str, str]], dict],
 ) -> None:
     ranker.confidence = settings.place_min_confidence - 0.01
     upload(client, auth, library_coffee_library())
-    assert client.post("/visits/recompute", headers=auth).json()["resolved"] == 0
+    assert recompute_job(auth)["resolved"] == 0
     assert all(v["place"] is None for v in client.get("/visits", headers=auth).json())
 
 
@@ -112,25 +124,29 @@ def test_search_radius_limits_candidates(
     auth: dict[str, str],
     places: dict[str, int],
     ranker: RecordingRanker,
+    recompute_job: Callable[[dict[str, str]], dict],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "place_search_radius_m", 10)
     upload(client, auth, stationary(offset(EVANS, -40, 0), T0, T0 + HOUR))  # 40 m south of Evans
-    assert client.post("/visits/recompute", headers=auth).json()["resolved"] == 0
+    assert recompute_job(auth)["resolved"] == 0
     assert ranker.calls == []  # no candidates -> the ranker is never asked
 
 
 def test_recompute_still_detects_visits_without_the_models(
-    client: TestClient, auth: dict[str, str], places: dict[str, int], monkeypatch: pytest.MonkeyPatch
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    recompute_job: Callable[[dict[str, str]], dict],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def unavailable():
         raise ml.ModelsUnavailable("not installed")
 
     monkeypatch.setattr(ml, "get_ranker", unavailable)
     upload(client, auth, library_then_field())
-    result = client.post("/visits/recompute", headers=auth)
-    assert result.status_code == 200
-    assert result.json()["visits"] == 2 and result.json()["resolved"] == 0
+    result = recompute_job(auth)
+    assert result["visits"] == 2 and result["resolved"] == 0
 
 
 def test_a_missing_model_module_is_reported_as_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -154,10 +170,14 @@ def test_a_missing_model_module_is_reported_as_unavailable(monkeypatch: pytest.M
 
 
 def test_deleting_a_place_unassigns_its_visits(
-    client: TestClient, auth: dict[str, str], places: dict[str, int], db: Session
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    db: Session,
+    recompute_job: Callable[[dict[str, str]], dict],
 ) -> None:
     upload(client, auth, library_then_field())
-    client.post("/visits/recompute", headers=auth)
+    recompute_job(auth)
 
     db.delete(db.get(Place, places["Evans Library"]))
     db.commit()

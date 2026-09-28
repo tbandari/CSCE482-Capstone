@@ -1,4 +1,5 @@
 import pytest
+from collections.abc import Callable
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -41,9 +42,14 @@ def nearest_ranker(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def day(client: TestClient, auth: dict[str, str], places: dict[str, int]) -> dict[str, int]:
+def day(
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    recompute_job: Callable[[dict[str, str]], dict],
+) -> dict[str, int]:
     upload(client, auth, campus_day())
-    result = client.post("/visits/recompute", headers=auth).json()
+    result = recompute_job(auth)
     assert (result["visits"], result["resolved"]) == (5, 4)
     return places
 

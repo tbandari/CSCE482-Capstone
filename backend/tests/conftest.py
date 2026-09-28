@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -8,6 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db import Base, get_db, make_engine
+from app.worker import process_one
 from app.main import create_app
 from app.places.loader import upsert_places
 
@@ -71,3 +72,21 @@ def register(client: TestClient, email: str = "zayd@tamu.edu", password: str = "
 @pytest.fixture
 def auth(client: TestClient) -> dict[str, str]:
     return register(client)
+
+
+@pytest.fixture
+def recompute_job(client: TestClient, db: Session) -> Callable[[dict[str, str]], dict]:
+    """Queue and synchronously process a recompute so endpoint tests stay deterministic."""
+
+    def run(headers: dict[str, str]) -> dict:
+        queued = client.post("/visits/recompute", headers=headers)
+        assert queued.status_code == 202, queued.text
+        job_id = queued.json()["job_id"]
+        processed = process_one(db)
+        assert processed is not None and processed.id == job_id and processed.status == "done"
+        status = client.get(f"/jobs/{job_id}", headers=headers)
+        assert status.status_code == 200, status.text
+        assert status.json()["status"] == "done"
+        return status.json()["result"]
+
+    return run

@@ -93,14 +93,6 @@ class NearbyPlaceOut(BaseModel):
     distance_m: float
 
 
-class RecomputeResponse(BaseModel):
-    points: int
-    kept: int
-    visits: int
-    resolved: int
-    dropped: dict[str, int]
-
-
 class StatsResponse(BaseModel):
     points: int
     device_points: int

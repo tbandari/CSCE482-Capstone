@@ -13,6 +13,8 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 uvicorn app.main:app --reload
+# In a second terminal
+python -m app.worker
 ```
 
 Interactive docs: http://127.0.0.1:8000/docs
@@ -56,7 +58,8 @@ uvicorn app.main:app --reload
 | `GET` | `/locations` | Points in a time range (`from_ts`, `to_ts`, `limit`) |
 | `GET` | `/locations/stats` | Counts and first/last timestamps |
 | `GET` | `/visits` | Detected visits, newest first |
-| `POST` | `/visits/recompute` | Re-run noise filter + stay detection over every point, then resolve places |
+| `POST` | `/visits/recompute` | Queue a recompute and return `202` with a job id |
+| `GET` | `/jobs/{job_id}` | Read the current user's queued, running, done or failed job |
 | `GET` | `/places/nearby` | Places around `lat`/`lon` (`radius_m` ≤ 5000, `category`, `limit`), nearest first |
 | `GET` | `/profile` | Interest profile: category weights and top places |
 | `PATCH` | `/profile/interests/{category}` | `{"hidden": true}` hides a category everywhere, `false` restores it |
@@ -90,7 +93,13 @@ Environment variables (or a `.env` file), all prefixed `ORBIT_`:
 
 ## Place resolution
 
-`POST /visits/recompute` walks the user's visits in time order. For each one it
+The worker handles each queued recompute outside the API request. Run it with
+`python -m app.worker`, or use `python -m app.worker --once` to process at most
+one queued job during development and tests. A failed job is retried up to three
+times and records its last error. Repeated queued recomputes for the same user are
+coalesced into one job.
+
+The recompute job walks the user's visits in time order. For each one it
 takes the places within `ORBIT_PLACE_SEARCH_RADIUS_M`, asks the ranker
 (`app.ml.places.rank_candidates`) to score them, and assigns the best one if its
 confidence clears `ORBIT_PLACE_MIN_CONFIDENCE`. Otherwise the visit stays
@@ -133,6 +142,8 @@ API, not model quality.
 
 ```
 app/
+  jobs/           durable queue, recompute handler and job status route
+  worker.py       polling worker entry point
   main.py         app factory, CORS, /health
   config.py       settings
   db.py           engine/session factory (SQLite + Postgres)

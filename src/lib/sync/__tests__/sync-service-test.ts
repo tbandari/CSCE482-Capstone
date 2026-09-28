@@ -25,6 +25,6 @@ test('two concurrent sync calls share one run', async () => {
   expect(first).toBe(second);
   expect(execute).toHaveBeenCalledTimes(1);
 
-  finish({ uploaded: 1, duplicates: 0, batches: 1, done: true });
+  finish({ uploaded: 1, duplicates: 0, batches: 1, pulledVisits: 0, done: true });
   await expect(first).resolves.toMatchObject({ done: true });
 });
