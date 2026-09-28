@@ -25,7 +25,7 @@ export default function ProfileScreen() {
       </View>
     );
   }
-  if (error || !profile) {
+  if (!profile) {
     return (
       <View style={{ flex: 1, padding: Spacing.five, backgroundColor: theme.background }}>
         <ThemedText color="danger" selectable>
@@ -50,6 +50,8 @@ export default function ProfileScreen() {
         alignSelf: 'center',
       }}>
       {isSample ? <Notice kind="info" message="Sample profile: sign in and sync to see yours." /> : null}
+      {/* The profile stays on screen when a request fails; the notice says it is stale. */}
+      {error ? <Notice kind="error" message={error} /> : null}
 
       <StatRow>
         <StatTile label="Visits" value={String(profile.total_visits)} />

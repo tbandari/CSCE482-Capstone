@@ -35,12 +35,16 @@ export interface Visit {
   /** Radius in meters around the centroid that contains every point of the stay. */
   radius: number;
   pointCount: number;
-  /** Semantic or user label ("Home"). Null until place resolution lands in month 2. */
+  /** Semantic or user label ("Home"). */
   label: string | null;
-  /** Server resolved OpenStreetMap place, or null for local and unresolved visits. */
+  /**
+   * The place the server resolved this visit to. Null for a visit computed on
+   * this phone until the next sync brings the server's answer down.
+   */
   placeId: number | null;
   placeName: string | null;
   placeCategory: string | null;
+  /** 0..1 from the place ranker. */
   placeConfidence: number | null;
 }
 

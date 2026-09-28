@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Linking, ScrollView, Switch, TextInput, View } from 'react-native';
 
@@ -20,6 +21,7 @@ import { syncNow, useSyncStatus } from '@/lib/sync/sync-service';
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const status = useTrackingStatus();
   const session = useSession();
   const syncStatus = useSyncStatus();
@@ -294,6 +296,11 @@ export default function SettingsScreen() {
         </StatRow>
         <Row title="First fix" value={stats.data?.firstTs ? formatDate(stats.data.firstTs) : '—'} />
         <Row title="Latest fix" value={stats.data?.lastTs ? formatDate(stats.data.lastTs) : '—'} />
+        <Row
+          title="Import location history"
+          subtitle="Load a Google Timeline export, or the sample week."
+          onPress={() => router.push('/import')}
+        />
         <Row
           title="Recompute visits"
           subtitle="Re-run noise filtering and stay detection on every point."
