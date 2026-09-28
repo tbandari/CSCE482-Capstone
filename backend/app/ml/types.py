@@ -44,6 +44,32 @@ class InterestWeight:
     hidden: bool = False
 
 
+
+
+@dataclass(frozen=True, slots=True)
+class VisitRecord:
+    """One resolved visit from a user's history, oldest first when in a sequence."""
+
+    start_ts: int  # epoch ms, UTC
+    end_ts: int  # epoch ms, UTC
+    place_id: int
+    category: str  # one of CATEGORIES
+
+
+@dataclass(frozen=True, slots=True)
+class ScoredPlace:
+    place_id: int
+    score: float  # 0..1, comparable within one response
+    reason: str  # one short human-readable line, e.g. "matches your interest in cafés"
+
+
+@dataclass(frozen=True, slots=True)
+class NextPlace:
+    place_id: int
+    probability: float  # 0..1; probabilities of one prediction sum to <= 1
+    rank: int  # 1-based
+
+
 CATEGORIES: tuple[str, ...] = (
     "cafe", "restaurant", "fast_food", "bar", "library", "university", "school",
     "gym", "sports", "park", "stadium", "supermarket", "convenience", "shop",
