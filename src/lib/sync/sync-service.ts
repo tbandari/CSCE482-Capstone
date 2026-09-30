@@ -6,6 +6,7 @@ import { useSyncExternalStore } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { signOut } from '@/lib/api/auth';
+import { fetchJob, requestRecompute } from '@/lib/api/jobs';
 import { uploadPoints } from '@/lib/api/locations';
 import { fetchVisits } from '@/lib/api/visits';
 import {
@@ -20,6 +21,21 @@ import { nextDelay } from '@/lib/sync/backoff';
 import { runSync, type SyncResult } from '@/lib/sync/sync-engine';
 
 const DATA_CHANGE_DEBOUNCE_MS = 30_000;
+
+// LOCAL DEV PATCH: nothing else currently asks the server to resolve visits
+// after a sync, so recompute jobs were never enqueued. This triggers one and
+// waits (briefly, bounded) for it to finish before visits are pulled down.
+const RECOMPUTE_POLL_MS = 1000;
+const RECOMPUTE_MAX_POLLS = 20;
+
+async function waitForRecompute(token: string): Promise<void> {
+  const { job_id: jobId } = await requestRecompute(token);
+  for (let attempt = 0; attempt < RECOMPUTE_MAX_POLLS; attempt += 1) {
+    const job = await fetchJob(jobId, token);
+    if (job.status === 'done' || job.status === 'failed') return;
+    await new Promise((resolve) => setTimeout(resolve, RECOMPUTE_POLL_MS));
+  }
+}
 
 export interface SyncStatus {
   state: 'idle' | 'syncing' | 'error' | 'offline';
@@ -135,6 +151,7 @@ const syncService = new SyncService({
       api: {
         upload: (points) => uploadPoints(points, session.token as string),
         fetchVisits: (options) => fetchVisits(options, session.token as string),
+        recompute: () => waitForRecompute(session.token as string),
         signOut,
       },
       getCursor: () => settings.get('lastSyncedPointId'),

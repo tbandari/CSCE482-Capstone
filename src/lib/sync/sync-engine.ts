@@ -29,6 +29,12 @@ export interface SyncEngineDeps {
     upload(points: readonly LocationPoint[]): Promise<IngestResponse>;
     fetchVisits(options: FetchVisitsOptions): Promise<Visit[]>;
     signOut(): Promise<void>;
+    /**
+     * LOCAL DEV PATCH: asks the server to (re)resolve visits and waits for that
+     * job to finish before visits are pulled down. Optional so the existing
+     * sync-engine tests (which don't provide it) keep working untouched.
+     */
+    recompute?(): Promise<void>;
   };
   getCursor(): number;
   setCursor(pointId: number, syncedAt: number): void;
@@ -81,6 +87,15 @@ export async function runSync(deps: SyncEngineDeps): Promise<SyncResult> {
       const failure = classifySyncError(error);
       if (failure.status === 401) await deps.api.signOut();
       return { uploaded, duplicates, batches, pulledVisits: 0, done: false, error: failure };
+    }
+  }
+
+  if (deps.api.recompute) {
+    try {
+      await deps.api.recompute();
+    } catch {
+      // Best-effort: a stuck or failed recompute shouldn't block pulling
+      // whatever visits the server already has resolved.
     }
   }
 
