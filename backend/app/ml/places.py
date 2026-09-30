@@ -24,8 +24,9 @@ from .types import PlaceCandidate, ScoredCandidate, VisitFeatures
 
 # -- distance --------------------------------------------------------------
 W_DISTANCE = 3.0
-DISTANCE_SIGMA_M = 15.0  # Gaussian decay scale
-DISTANCE_PENALTY_RADIUS_M = 30.0  # the proposal's "30 m rule"
+DISTANCE_SIGMA_M = 15.0  # Gaussian decay scale for a precisely-fixed stay
+DISTANCE_SIGMA_RADIUS_FACTOR = 0.5  # widen the decay scale for a sloppier stay
+DISTANCE_PENALTY_RADIUS_M = 30.0  # the proposal's "30 m rule" -- fixed, not scaled
 DISTANCE_PENALTY = 2.0  # extra flat penalty once past that radius
 
 # -- dwell fit ---------------------------------------------------------------
@@ -75,11 +76,22 @@ CATEGORY_PRIOR_PENALTY: dict[str, float] = {
 }
 
 # -- confidence -----------------------------------------------------------------
-NONE_OF_THESE_SCORE = 0.0  # roughly a neutral candidate right at the penalty radius
+# A fixed 0.0 anchor meant almost nothing past the 30 m rule could ever clear
+# ORBIT_PLACE_MIN_CONFIDENCE, because the flat DISTANCE_PENALTY alone (times
+# W_DISTANCE) already outweighs the softmax's effective margin. -2.5 was
+# checked against evaluation/data/synthetic-places.jsonl, not picked by feel:
+# recall 91.7% -> 100%, precision 97.1% -> 97.3%, top-1/top-3 unchanged.
+NONE_OF_THESE_SCORE = -2.5
 
 
-def _distance_score(dist_m: float) -> float:
-    score = -(dist_m**2) / (2 * DISTANCE_SIGMA_M**2)
+def _distance_score(dist_m: float, visit_radius_m: float) -> float:
+    # A stay with a large detected radius (noisy fixes, a big parking lot, a
+    # sprawling building) has correspondingly uncertain positioning, so a real
+    # candidate a bit further out shouldn't be crushed relative to a nearer
+    # but implausible one. The 30 m "assign nothing past here" rule below stays
+    # fixed either way -- only the decay curve leading up to it widens.
+    sigma = max(DISTANCE_SIGMA_M, visit_radius_m * DISTANCE_SIGMA_RADIUS_FACTOR)
+    score = -(dist_m**2) / (2 * sigma**2)
     if dist_m > DISTANCE_PENALTY_RADIUS_M:
         score -= DISTANCE_PENALTY
     return score
@@ -127,7 +139,7 @@ def _score(
     revisits = (revisit_counts or {}).get(candidate.place_id, 0)
 
     score = (
-        W_DISTANCE * _distance_score(dist_m)
+        W_DISTANCE * _distance_score(dist_m, visit.radius)
         + W_DWELL * _dwell_score(candidate.category, duration_min)
         + W_HOURS * _hours_score(candidate.opening_hours, local_moment)
         + W_REVISIT * math.log1p(revisits)
