@@ -1,0 +1,27 @@
+# Render Blueprint for the hosted demo API (free plan). See backend/README.md#hosted-demo.
+services:
+  - type: web
+    name: orbit-api
+    runtime: python
+    plan: free
+    region: ohio
+    rootDir: backend
+    buildCommand: pip install .
+    startCommand: bash scripts/render_start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orbit-db
+          property: connectionString
+      - key: ORBIT_JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: orbit-db
+    plan: free
+    region: ohio
+    databaseName: orbit
+    user: orbit

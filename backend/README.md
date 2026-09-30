@@ -46,6 +46,33 @@ cp .env.example .env            # ORBIT_DATABASE_URL points at the container
 uvicorn app.main:app --reload
 ```
 
+## Hosted demo
+
+[`render.yaml`](../render.yaml) runs this API on Render's free plan, with a free
+Render Postgres database. Render's free plan has no background workers, so
+[`scripts/render_start.sh`](scripts/render_start.sh) starts `python -m app.worker`
+in the same container beside uvicorn. It also creates the tables and loads
+[`data/college-station.osm.json.gz`](data/college-station.osm.json.gz) (OpenStreetMap
+data, © OpenStreetMap contributors, ODbL) into an empty database.
+
+To deploy, in the Render dashboard choose **New → Blueprint**, connect this repository, and
+apply. Render creates `orbit-api` and `orbit-db` and generates `ORBIT_JWT_SECRET`.
+If your GitHub account can't connect the repository, create the two pieces manually:
+
+1. **New → Postgres**: plan Free, region Ohio.
+2. **New → Web Service → Public Git Repository**: this repo's URL, region Ohio,
+   root directory `backend`, build `pip install .`, start
+   `bash scripts/render_start.sh`, instance type Free, health check path `/health`.
+3. On the web service, set `DATABASE_URL` to the database's **Internal Database
+   URL**, `ORBIT_JWT_SECRET` to a long random string, and `PYTHON_VERSION` to `3.12.8`.
+
+Free plan limits to plan around:
+
+- The service sleeps after 15 minutes idle and takes about a minute to wake. Open
+  `/health` before a demo; the app's 15 s request timeout fails the first call otherwise.
+- The free database expires 30 days after it is created. Recreate it and redeploy; the
+  start script reloads places into the new, empty database.
+
 ## Endpoints
 
 | Method | Path | Purpose |

@@ -34,6 +34,23 @@ docs/reports/           Weekly progress reports and evidence
 .github/workflows/      CI: typecheck, unit tests, expo-doctor, pytest
 ```
 
+## Live demo
+
+The web build is hosted at **https://csce482-capstone.expo.app**, and
+[docs/demo-qr.png](docs/demo-qr.png) is a QR code for that link. It opens in the
+phone's browser with nothing to install. On the Import tab, **Load sample week** fills it with data.
+The web build has no background tracking. Sign-in, sync and Discover use the
+hosted API on Render's free plan ([backend/README.md](backend/README.md#hosted-demo)),
+which sleeps when idle: open its `/health` URL about a minute before a demo.
+
+To redeploy after changes (EAS project `@zaydn/csce482-capstone`), bake in the
+hosted API URL at export time:
+
+```bash
+EXPO_PUBLIC_API_URL=https://<your-render-service>.onrender.com npx expo export -p web
+npx eas-cli@latest deploy --prod
+```
+
 ## Prerequisites
 
 - **Node.js 20+** (`nvm install 22 && nvm use 22` if you use nvm)
