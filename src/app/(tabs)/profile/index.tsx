@@ -1,3 +1,5 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, Switch, View } from 'react-native';
 
 import { EmptyState } from '@/components/empty-state';
@@ -16,7 +18,11 @@ import { useInterestProfile } from '@/lib/profile/use-interest-profile';
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { profile, loading, error, isSample, setHidden } = useInterestProfile();
+  const { profile, loading, error, isSample, setHidden, reload } = useInterestProfile();
+
+  // LOCAL DEV PATCH: nothing previously refetched the profile after a sync/
+  // recompute finished, so this tab could go stale until the app restarted.
+  useFocusEffect(useCallback(() => reload(), [reload]));
 
   if (loading) {
     return (
