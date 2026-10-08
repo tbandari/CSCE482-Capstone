@@ -1,0 +1,24 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

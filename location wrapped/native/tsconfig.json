@@ -1,0 +1,14 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "exclude": [
+    "node_modules",
+    "update-backups",
+    ".expo"
+  ]
+}
