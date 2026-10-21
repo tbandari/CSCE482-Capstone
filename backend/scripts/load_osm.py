@@ -1,7 +1,7 @@
 """
 Load OpenStreetMap places into the Orbit database.
 
-    python scripts/load_osm.py --file extract.json
+    python scripts/load_osm.py --file extract.json          (or extract.json.gz)
     python scripts/load_osm.py --bbox 30.57,-96.39,30.66,-96.28 [--save extract.json]
 
 `--bbox` (south,west,north,east) downloads public map data once from the Overpass
@@ -12,6 +12,7 @@ resolution afterwards runs entirely against this local copy.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import sys
 import urllib.parse
@@ -21,7 +22,10 @@ from pathlib import Path
 # Run as a plain script from backend/, so make `app` importable without an install.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from sqlalchemy import select  # noqa: E402
+
 from app.db import Base, SessionLocal, engine  # noqa: E402
+from app.models import Place  # noqa: E402
 from app.places.loader import upsert_places  # noqa: E402
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
@@ -67,17 +71,26 @@ def main(argv: list[str] | None = None) -> int:
     source.add_argument("--file", type=Path, help="Overpass JSON file to load")
     source.add_argument("--bbox", type=parse_bbox, help="south,west,north,east to download from Overpass")
     parser.add_argument("--save", type=Path, help="with --bbox, also write the downloaded JSON here")
+    parser.add_argument("--skip-if-loaded", action="store_true", help="do nothing if any places already exist")
     args = parser.parse_args(argv)
 
+    Base.metadata.create_all(engine)
+    if args.skip_if_loaded:
+        with SessionLocal() as db:
+            if db.scalar(select(Place.id).limit(1)) is not None:
+                print("Places already loaded, skipping", file=sys.stderr)
+                return 0
+
     if args.file:
-        data = json.loads(args.file.read_text())
+        opener = gzip.open if args.file.suffix == ".gz" else open
+        with opener(args.file, "rt") as source_file:
+            data = json.load(source_file)
     else:
         print(f"Downloading places in {args.bbox} from Overpass…", file=sys.stderr)
         data = fetch(args.bbox)
         if args.save:
             args.save.write_text(json.dumps(data))
 
-    Base.metadata.create_all(engine)
     with SessionLocal() as db:
         inserted, updated = upsert_places(db, data)
         db.commit()
