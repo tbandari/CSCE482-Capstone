@@ -93,11 +93,16 @@ def test_recompute_finds_three_visits(
 
 
 def test_export_contains_everything(
-    client: TestClient, auth: dict[str, str], recompute_job: Callable[[dict[str, str]], dict]
+    client: TestClient,
+    auth: dict[str, str],
+    places: dict[str, int],
+    recompute_job: Callable[[dict[str, str]], dict],
 ) -> None:
     trace = morning_trace()
     client.post("/locations/batch", json={"points": trace}, headers=auth)
     recompute_job(auth)
+    kyle = places["Kyle Field"]
+    client.post(f"/recommendations/{kyle}/feedback", json={"action": "dismissed"}, headers=auth)
 
     export = client.get("/export", headers=auth)
     assert export.status_code == 200
@@ -107,3 +112,5 @@ def test_export_contains_everything(
     assert len(body["visits"]) == 3
     assert body["points"][0]["ts"] == T0
     assert body["exported_at"] > 0
+    [feedback] = body["recommendation_feedback"]
+    assert (feedback["place"]["id"], feedback["action"]) == (kyle, "dismissed")

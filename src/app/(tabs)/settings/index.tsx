@@ -9,10 +9,11 @@ import { StatRow, StatTile } from '@/components/stat-tile';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useStoreQuery } from '@/hooks/use-store-query';
-import { login, register, signOut } from '@/lib/api/auth';
+import { deleteAccount, login, register, signOut } from '@/lib/api/auth';
 import { useSession } from '@/lib/api/session';
 import { confirmAsync } from '@/lib/confirm';
 import { store } from '@/lib/db/store';
+import { buildExport, saveExport } from '@/lib/export-data';
 import { formatCount, formatDate, formatRelativeTime, formatTime } from '@/lib/format';
 import { startTracking, stopTracking, useTrackingStatus } from '@/lib/location/tracking';
 import { recomputeVisits } from '@/lib/pipeline/recompute-visits';
@@ -27,7 +28,7 @@ export default function SettingsScreen() {
   const syncStatus = useSyncStatus();
   const trackingEnabled = useSetting('trackingEnabled');
   const stats = useStoreQuery(() => store.getStats());
-  const [busy, setBusy] = useState<'tracking' | 'recompute' | 'wipe' | null>(null);
+  const [busy, setBusy] = useState<'tracking' | 'recompute' | 'export' | 'wipe' | null>(null);
   const [notice, setNotice] = useState<{ kind: NoticeKind; message: string } | null>(null);
   const [accountBusy, setAccountBusy] = useState<'login' | 'register' | 'sync' | 'signout' | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
@@ -72,10 +73,24 @@ export default function SettingsScreen() {
     }
   };
 
+  const exportEverything = async () => {
+    setBusy('export');
+    setNotice(null);
+    try {
+      await saveExport(await buildExport(session.token));
+    } catch (error) {
+      setNotice({ kind: 'error', message: describe(error) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const wipe = async () => {
     const ok = await confirmAsync(
       'Delete all data?',
-      'Every point, visit and import on this device will be permanently deleted. This cannot be undone.',
+      session.token
+        ? `Every point, visit and import on this device, and your account ${session.email ?? ''} with everything synced to it, will be permanently deleted. This cannot be undone.`
+        : 'Every point, visit and import on this device will be permanently deleted. This cannot be undone.',
       'Delete',
     );
     if (!ok) return;
@@ -83,8 +98,15 @@ export default function SettingsScreen() {
     setNotice(null);
     try {
       await stopTracking();
+      // Server first: if it fails, local data stays so the user can retry instead of half-deleting.
+      if (session.token) await deleteAccount(session.token);
       await store.clearAll();
-      setNotice({ kind: 'info', message: 'All location data on this device has been deleted.' });
+      setNotice({
+        kind: 'info',
+        message: session.token
+          ? 'Your account and all location data have been permanently deleted.'
+          : 'All location data on this device has been deleted.',
+      });
     } catch (error) {
       setNotice({ kind: 'error', message: describe(error) });
     } finally {
@@ -310,13 +332,22 @@ export default function SettingsScreen() {
         />
         <Row
           title="Export everything"
-          subtitle="One-tap JSON export ships with cloud sync in sprint 2."
-          disabled
+          subtitle={
+            session.token
+              ? 'Download every point, visit and place you saved or dismissed, from this device and your account, as JSON.'
+              : 'Download every point, visit and import on this device as JSON.'
+          }
+          onPress={exportEverything}
+          disabled={busy != null}
           chevron={false}
         />
         <Row
           title="Delete all data"
-          subtitle="Permanently removes every point, visit and import on this device."
+          subtitle={
+            session.token
+              ? 'Permanently removes everything on this device and deletes your account.'
+              : 'Permanently removes every point, visit and import on this device.'
+          }
           titleColor="danger"
           onPress={wipe}
           disabled={busy != null}
@@ -325,7 +356,7 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title="About">
-        <Row title="Orbit" value="1.0.0 · Iteration 1" />
+        <Row title="Orbit" value="1.0.0 · Iteration 2" />
         <Row
           title="Privacy"
           subtitle="Location data stays local unless you sign in to back it up. It is never sold."

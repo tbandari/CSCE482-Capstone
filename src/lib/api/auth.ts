@@ -34,3 +34,9 @@ export function fetchMe(token: string): Promise<ApiUser> {
 export function signOut(): Promise<void> {
   return clearSession();
 }
+
+/** Permanently deletes the account and everything the server holds for it, then signs out. */
+export async function deleteAccount(token: string): Promise<void> {
+  await apiFetch<void>('/auth/me', { method: 'DELETE', token });
+  await clearSession();
+}

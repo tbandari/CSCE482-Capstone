@@ -129,6 +129,7 @@ class RecommendationFeedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped[User] = relationship(back_populates="recommendation_feedback")
+    place: Mapped["Place"] = relationship()
 
 
 class InterestOverride(Base):

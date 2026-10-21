@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, SafeAreaView, ScrollView, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import ViewShot from 'react-native-view-shot';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors } from '../theme';
 import { useApp } from '../context/AppContext';
@@ -20,7 +21,10 @@ export function WrappedStory({ visible, onClose }: { visible: boolean; onClose: 
   const next = () => index < 9 ? setIndex(index + 1) : onClose();
   const prev = () => setIndex(Math.max(0,index - 1));
   const share = async () => {
-    try { const uri = await shareRef.current?.capture?.(); if (!uri || !await Sharing.isAvailableAsync()) throw Error('Share unavailable'); await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Location Wrapped' }); } catch { Alert.alert('Sharing failed','Please try again.'); }
+    let uri: string | undefined;
+    try { uri = await shareRef.current?.capture?.(); if (!uri || !await Sharing.isAvailableAsync()) throw Error('Share unavailable'); await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Location Wrapped' }); } catch { Alert.alert('Sharing failed','Please try again.'); }
+    // The card shows your top place name, so don't leave the screenshot in the cache.
+    finally { if (uri) await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {}); }
   };
 
   const slides: React.ReactNode[] = [

@@ -172,9 +172,18 @@ class NextPlacesResponse(BaseModel):
     predictions: list[NextPlaceOut]
 
 
+class FeedbackOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    place: PlaceSummary
+    action: Literal["saved", "dismissed"]
+    created_at: datetime
+
+
 class ExportResponse(BaseModel):
     user: UserOut
     exported_at: int
     points: list[PointOut]
     visits: list[VisitOut]
     interest_overrides: list[InterestOverrideOut]
+    recommendation_feedback: list[FeedbackOut]
