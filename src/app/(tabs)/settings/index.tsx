@@ -356,7 +356,7 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title="About">
-        <Row title="Orbit" value="1.0.0 · Iteration 1" />
+        <Row title="Orbit" value="1.0.0 · Iteration 2" />
         <Row
           title="Privacy"
           subtitle="Location data stays local unless you sign in to back it up. It is never sold."
