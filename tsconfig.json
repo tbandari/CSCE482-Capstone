@@ -22,6 +22,7 @@
   ],
   "exclude": [
     "backend",
+    "location wrapped",
     "node_modules"
   ]
 }
